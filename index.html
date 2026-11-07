@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="獵魔士熊貓64型：自我探索V4。先答 24 題，平手軸各補兩題；完成後自由選擇查看詳細結果，或繼續完整 60 題。">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>獵魔士熊貓64型：自我探索V4</title>
+  <link rel="icon" href="./assets/demonward-panda-logo.png" type="image/png">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要內容</a>
+  <header class="site-header">
+    <a href="#main" class="brand" aria-label="獵魔士熊貓64型：自我探索V4 首頁"><img src="./assets/demonward-panda-logo.png" width="42" height="42" alt=""><span>獵魔士熊貓64型 <small>自我探索V4</small></span></a>
+    <div class="header-actions"><span class="edition">V4 <span>測試版</span></span><button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="true">音效：開</button></div>
+  </header>
+  <audio id="ui-click" src="./assets/audio/ui%20click-02.m4a" preload="auto" aria-hidden="true"></audio>
+  <p id="sound-status" class="sr-only" role="status" aria-live="polite"></p>
+  <div id="storage-warning" class="warning" role="alert" hidden></div>
+  <main id="main" tabindex="-1"><div id="app"><p class="boot">正在準備題目…</p></div></main>
+  <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+  <footer class="site-footer"><span>Demonward Panda 64: Self Explorer V4 · beta.9</span><p>供娛樂與自我探索參考。這是測試題本，結果不作為心理診斷或重大決策依據。</p></footer>
+  <noscript><p class="warning">這份測驗需要啟用 JavaScript。請透過 HTTP 網址開啟網站。</p></noscript>
+</body>
+</html>
