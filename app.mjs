@@ -8,32 +8,40 @@ import { esc, date, stateNames, homeView, quizView, completionView, resultView }
 import { ArchiveClient } from './archive-client.mjs';
 import {SupplementUI} from './supplement-ui.mjs';
 import {UIClickSound} from './click-sound.mjs';
+import {CompletionStatistics} from './completion-statistics.mjs';
 const app=document.querySelector('#app');
 const storage={getItem:k=>localStorage.getItem(k),setItem:(k,v)=>localStorage.setItem(k,v),removeItem:k=>localStorage.removeItem(k)};
 new UIClickSound({root:document,storage});
 const loaded=loadState(storage);
 let state=loaded.state, activeResultId=null, pendingBaselineId=null;
 const archive=new ArchiveClient({transport:new AppsScriptTransport(DRIVE_ARCHIVE_CONFIG),getLocal:()=>state.attempts,getCurrent:()=>state.attempts.find(r=>r.attemptId===activeResultId)||null,onChange:()=>{if(activeResultId&&!findResult(activeResultId))renderHome();},onView:id=>renderResult(id),onRetest:id=>renderSetup(id)});
+const statistics=new CompletionStatistics({storage,transport:new AppsScriptTransport(DRIVE_ARCHIVE_CONFIG),onChange:renderStatistics});
 const notes=new SupplementUI({getState:()=>state,persist,getRecord:findResult,getRemote:id=>archive.supplements[id],saveRemote:(doc,r,rev)=>archive.saveSupplement(doc,r,rev),withdrawRemote:(id,rev)=>archive.withdrawSupplement(id,rev),isAuthenticated:()=>archive.authenticated,announce});
 function warn(text){const node=document.querySelector('#storage-warning');node.textContent=text;node.hidden=!text;}
 function announce(text){document.querySelector('#announcement').textContent=text;}
 function persist(){if(!saveState(storage,state))warn('本機儲存失敗，進度可能無法保留。完成後請先下載紀錄，再關閉此頁。');}
 function focusScreen(){const h=app.querySelector('h1');if(h){h.tabIndex=-1;h.focus({preventScroll:true});}window.scrollTo({top:0,behavior:'instant'});}
-function screen(html,name){app.innerHTML=html;app.dataset.screen=name;announce('');focusScreen();}
+function screen(html,name){app.innerHTML=html;app.dataset.screen=name;if(['result','completion','tie-intro'].includes(name)){const node=document.createElement('div');node.id='completion-save';node.className='completion-save';node.setAttribute('role','status');(app.querySelector('.result-hero')||app.querySelector('section')||app).append(node);renderStatistics();}announce('');focusScreen();}
+function renderStatistics(){
+  const node=document.querySelector('#completion-save'),record=activeResultId&&findResult(activeResultId);if(!node||!record)return;
+  const status=statistics.status(record);node.dataset.saveState=status.state;
+  node.innerHTML=status.state==='saved'?`<p>Google 測驗紀錄：已保存（${record.questionCount} 題）</p>`:status.state==='not-consented'?'<p>這份結果尚未加入 Google 測驗紀錄。只保存完成摘要，不含逐題答案或補充原文。</p><button class="button" data-action="consent-save-statistics">同意並補存這次摘要</button>':status.state==='failed'?`<p>Google 測驗紀錄：尚未保存，請重試。${statistics.persisted?'待送摘要已保留在本機。':'本機待送摘要無法保存，請保持本頁開啟。'}</p><button class="button" data-action="retry-statistics">重新保存</button>`:'<p>Google 測驗紀錄：正在保存，請稍候確認。</p>';
+}
 function findResult(id){return state.attempts.find(r=>r.attemptId===id)||archive.records.find(r=>r.attemptId===id);}
-function replaceResult(r){const i=state.attempts.findIndex(p=>p.attemptId===r.attemptId);if(i<0)state.attempts.push(r);else state.attempts[i]=r;archive.enqueue(r);}
+function replaceResult(r){const i=state.attempts.findIndex(p=>p.attemptId===r.attemptId);if(i<0)state.attempts.push(r);else state.attempts[i]=r;archive.enqueue(r);statistics.enqueue(r);}
 function renderHome(){activeResultId=null;screen(homeView(state)+'<section id="archive-panel" class="history archive-panel"></section>','home');archive.render();}
 function renderSetup(baselineId=null){
   pendingBaselineId=baselineId;const previous=baselineId&&findResult(baselineId);
   screen(`<section class="narrow panel setup"><p class="eyebrow">開始之前</p><h1>${previous?'再看一次，現在的自己':'先想想平常的自己'}</h1><p class="lead">選最接近平常自己的回答。確定兩側偏好接近可選相近選項；無法判斷或都不符合時，選第四項，不計分。</p>${previous?`<p class="local-note">這次將和 ${date(previous.baseCompletedAt)} 的 24 題主測驗配對比較，紀錄實際間隔。</p>`:''}
     <p>先回應 24 題；資料足夠且平手的面向各補兩題後完成前段，再決定是否繼續 60 題。題目隨機排列，暫停續答維持同一次順序。</p><form id="setup-form"><fieldset><legend>最近兩週的生活狀態</legend>${Object.entries(stateNames).map(([v,label],i)=>`<label class="choice"><input type="radio" name="state" value="${v}" ${i===0?'checked':''}><span>${label}</span></label>`).join('')}</fieldset>
-    <label class="checkline"><input type="checkbox" name="includeResponses"><span>我願意在下載的測試紀錄中包含這次的逐題回答（選填）。<br><small class="muted">未勾選仍能完成、查看及下載階段分數。這項同意與私人存檔分開。</small></span></label><div class="actions"><button class="button primary" type="submit">開始第 1 題</button><button class="button text" type="button" data-action="home">返回首頁</button></div></form></section>`,'setup');
+    <label class="checkline"><input type="checkbox" name="includeResponses"><span>我願意在下載的測試紀錄中包含這次的逐題回答（選填）。<br><small class="muted">未勾選仍能完成、查看及下載階段分數。這項同意與私人存檔分開。</small></span></label><p class="local-note">選擇「同意自動保存並開始」後，每個已完成階段會自動保存日期、題數、六個面向的結果及當時生活狀態到私人 Google 試算表，供測驗改善使用。沒有姓名、Email、逐題答案或補充原文，保存 365 天；跨裝置找回仍可另選私人存檔。<a href="./PRIVACY.md" target="_blank" rel="noopener">查看資料說明</a></p><div class="actions"><button class="button primary" type="submit" name="completionConsent" value="yes">同意自動保存並開始</button><button class="button" type="submit" name="completionConsent" value="no">僅在本機開始</button><button class="button text" type="button" data-action="home">返回首頁</button></div></form></section>`,'setup');
 }
 function begin(form){
   if(state.draft&&!window.confirm('開始新的一次會取代未完成進度，已完成結果會保留。確定開始嗎？'))return;
   if(state.draft)notes.prune(state.draft.attemptId);
   const previous=pendingBaselineId&&findResult(pendingBaselineId);state.participantId||=crypto.randomUUID();
   state.draft={questionnaireVersion:QUESTIONNAIRE_VERSION,attemptId:crypto.randomUUID(),startedAt:new Date().toISOString(),state:form.get('state'),includeResponses:form.has('includeResponses'),baselineAttemptId:previous?.attemptId||null,retestSequence:previous?(previous.retestSequence||1)+1:1,orderPool:createQuestionOrder(),answers:{},index:0,phase:'base'};
+  if(form.get('completionConsent')==='yes')statistics.authorize(state.draft.attemptId);
   persist();renderQuiz();
 }
 function draftStart(d){return d.phase==='base'?0:findResult(d.attemptId).questionCount;}
@@ -92,13 +100,15 @@ async function download(kind,all=false){
     const anchor=document.createElement('a');anchor.href=url;anchor.download=`demonward-panda-self-explorer-v4-${all?'all':records[0].attemptId.slice(0,8)}.${kind}`;document.body.append(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);announce('已準備下載紀錄，請確認瀏覽器下載項目。');
   }catch{warn('無法產生下載檔，請使用本機 HTTP 網址開啟，或檢查瀏覽器是否允許下載。');}
 }
-app.addEventListener('submit',event=>{event.preventDefault();const form=new FormData(event.target);if(event.target.id==='setup-form')begin(form);if(event.target.id==='question-form')nextQuestion();if(event.target.id==='feedback-form')saveFeedback(form);});
+app.addEventListener('submit',event=>{event.preventDefault();const form=new FormData(event.target);if(event.target.id==='setup-form'){form.set('completionConsent',event.submitter?.value==='yes'?'yes':'no');begin(form);}if(event.target.id==='question-form')nextQuestion();if(event.target.id==='feedback-form')saveFeedback(form);});
 app.addEventListener('change',event=>{
   if(event.target.name==='answer'&&state.draft){const q=presentedQuestions(state.draft.phase,state.draft.answers,state.draft.orderPool)[state.draft.index];state.draft.answers[q.id]=event.target.value==='skip'?'skip':Number(event.target.value);persist();document.querySelector('#question-error').hidden=true;}
   if(event.target.name==='fit')document.querySelector('#feedback-details').hidden=event.target.value==='yes';
 });
 app.addEventListener('click',event=>{
   const button=event.target.closest('[data-action]');if(!button)return;const action=button.dataset.action;
+  if(action==='consent-save-statistics'&&activeResultId){statistics.authorize(activeResultId);statistics.enqueue(findResult(activeResultId));}
+  if(action==='retry-statistics')void statistics.retry();
   if(action==='setup')renderSetup();if(action==='resume')renderQuiz();
   if(action==='open-archive'){const detail=document.querySelector('#result-archive');if(detail){detail.open=true;detail.querySelector('summary').focus();detail.scrollIntoView({block:'start',behavior:'instant'});}}
   if(['home','pause'].includes(action)){persist();renderHome();}
@@ -110,8 +120,9 @@ app.addEventListener('click',event=>{
   if(action==='stop-stage')stopStage();if(action==='retest')renderSetup(activeResultId);
   if(action==='export-json')download('json');if(action==='export-csv')download('csv');if(action==='export-all')download('json',true);
   if(action==='clear'&&window.confirm('確定刪除此手札版的本機進度、結果與文字？後台存檔及已下載的檔案需另行刪除。')){
-    if(clearState(storage)){state={participantId:null,draft:null,attempts:[]};warn('');renderHome();announce('此版本機資料已刪除。');}else warn('刪除失敗，請使用瀏覽器網站設定清除本頁資料。');
+    if(clearState(storage)){statistics.clear();state={participantId:null,draft:null,attempts:[]};warn('');renderHome();announce('此版本機資料已刪除。');}else warn('刪除失敗，請使用瀏覽器網站設定清除本頁資料。');
   }
 });
 document.querySelector('.brand').addEventListener('click',event=>{event.preventDefault();persist();renderHome();});
-warn(loaded.warning);renderHome();document.documentElement.dataset.ready='true';archive.initialize();
+window.addEventListener('online',()=>{void statistics.retry();});
+warn(loaded.warning);renderHome();document.documentElement.dataset.ready='true';archive.initialize();void statistics.retry();

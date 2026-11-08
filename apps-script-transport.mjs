@@ -9,7 +9,8 @@ export class AppsScriptTransport{
     if(!match||this.blockedDeploymentIds.includes(match[1]))throw Error('尚未設定本版專用的 Apps Script 接收網址；本機作答仍可使用。');
     if(path==='session'&&method==='GET'&&!this.#token)return{authenticated:false,mode:'google-drive',retentionDays:365};
     let action,extra={};const url=new URL(path,'https://local.invalid/');
-    if(path==='archives'&&method==='POST')action='create';
+    if(path==='statistics'&&method==='POST')action='collect';
+    else if(path==='archives'&&method==='POST')action='create';
     else if(path==='sessions'&&method==='POST')action='login';
     else if(path==='session'&&method==='GET')action='session';
     else if(path==='session'&&method==='DELETE')action='logout';
@@ -19,7 +20,7 @@ export class AppsScriptTransport{
     else if(path==='archives/current'&&method==='DELETE')action='deleteArchive';
     else throw Error('不支援的存檔操作。');
     const newSessionToken=['create','login'].includes(action)?driveRandomToken():null,recoveryCode=action==='create'?driveRandomCode():body.recoveryCode;
-    const payload={...body,...extra,apiVersion:driveApiVersion,action,sessionToken:this.#token,requestId:crypto.randomUUID(),...(newSessionToken?{newSessionToken}:{}),...(['create','login'].includes(action)?{recoveryCode,remember:false}:{})};
+    const payload={...body,...extra,apiVersion:driveApiVersion,action,...(action==='collect'?{}:{sessionToken:this.#token}),requestId:crypto.randomUUID(),...(newSessionToken?{newSessionToken}:{}),...(['create','login'].includes(action)?{recoveryCode,remember:false}:{})};
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
     try{
       const response=await this.fetcher(this.endpoint,{method:'POST',mode:'cors',credentials:'omit',redirect:'follow',cache:'no-store',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload),signal:controller.signal});

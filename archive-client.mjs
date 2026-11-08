@@ -1,6 +1,6 @@
 import {toArchiveSummary} from './archive-data.mjs';
 import {validateRecord} from './core.mjs';
-import {esc,date} from './views.mjs';
+import {esc,date,resultLabel} from './views.mjs';
 import {validateSupplementDocument} from './supplement-core.mjs';
 export class ArchiveClient{
   constructor({getLocal,onChange,onView,onRetest,getCurrent=()=>null,transport=null}){
@@ -87,7 +87,7 @@ export class ArchiveClient{
     });this.queue=job.catch(()=>{});return job;
   }
   displayMessage(){return this.message.startsWith('尚未設定本版專用')?'私人存檔準備中。你仍可完成測驗，先保存在這個瀏覽器或下載備份。':this.message;}
-  statusHTML(){return `<div id="archive-status" class="local-note" role="status">${this.authenticated?'已開啟私人存檔；新完成的結果與回饋會自動保存，逐題答案留在本機。':this.available?'目前只保存在這個瀏覽器。想換裝置找回，可到首頁建立私人存檔。':'目前只保存在這個瀏覽器；可先下載紀錄備份。'}${this.message?`<br>${esc(this.displayMessage())}`:''}</div>`;}
+  statusHTML(){return `<div id="archive-status" class="local-note" role="status">${this.authenticated?'已開啟私人存檔；新完成的結果與回饋會自動保存，逐題答案留在本機。':this.available?'尚未啟用私人找回；如需跨裝置查看，可另行建立私人存檔。':'私人找回尚未連線；自動測驗紀錄請查看上方保存狀態，也可下載備份。'}${this.message?`<br>${esc(this.displayMessage())}`:''}</div>`;}
   render(){
     const status=document.querySelector('#archive-status');if(status)status.outerHTML=this.statusHTML();
     const target=document.querySelector('#archive-panel');if(!target)return;
@@ -105,7 +105,7 @@ export class ArchiveClient{
     }
     target.innerHTML=heading+message+
       `${this.recoveryCode?`<div class="recovery-card"><h3>請保存私人找回碼</h3><p>只顯示這一次。持有此碼的人可以讀取或刪除此存檔。</p><code id="recovery-code">${esc(this.recoveryCode)}</code><button class="button" data-archive-action="hide-code">我已保存，隱藏找回碼</button></div>`:''}
-      <h3>私人存檔中的結果</h3>${this.records.length?`<ul class="history-list">${this.records.map(r=>`<li><div><strong>${esc(r.publicResult)}</strong><small>${date(r.completedAt)} · ${r.questionCount} 題</small></div><div class="actions"><button class="button" data-archive-action="view" data-id="${esc(r.attemptId)}">查看結果</button><button class="button" data-archive-action="retest" data-id="${esc(r.attemptId)}">以上次為基準再測</button></div></li>`).join('')}</ul>`:'<p>還沒有結果。完成測驗後會自動保存，也可選擇存入已有的本機紀錄。</p>'}
+      <h3>私人存檔中的結果</h3>${this.records.length?`<ul class="history-list">${this.records.map(r=>`<li><div><strong>${esc(resultLabel(r))}</strong><small>${date(r.completedAt)} · ${r.questionCount} 題</small></div><div class="actions"><button class="button" data-archive-action="view" data-id="${esc(r.attemptId)}">查看結果</button><button class="button" data-archive-action="retest" data-id="${esc(r.attemptId)}">以上次為基準再測</button></div></li>`).join('')}</ul>`:'<p>還沒有結果。完成測驗後會自動保存，也可選擇存入已有的本機紀錄。</p>'}
       <div class="actions"><button class="button" data-archive-action="sync" ${this.busy?'disabled':''}>同步此瀏覽器的已完成紀錄</button><button class="button" data-archive-action="refresh" ${this.busy?'disabled':''}>重新讀取結果</button><button class="button text" data-archive-action="logout" ${this.busy?'disabled':''}>登出私人存檔</button></div>
       <details><summary>刪除這份後台存檔</summary><p>會刪除這份後台存檔的全部結果與補充文字，並讓所有裝置登出。請輸入私人找回碼確認；本機作答與下載檔案不會一起刪除。</p><form id="archive-delete"><label class="archive-label" for="archive-delete-code">私人找回碼</label><input id="archive-delete-code" class="archive-input" name="recoveryCode" type="password" maxlength="100" autocomplete="off" required><button class="button danger" type="submit" ${this.busy?'disabled':''}>確認刪除後台存檔</button></form></details>`;
   }
