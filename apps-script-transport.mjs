@@ -1,3 +1,4 @@
+import {QUESTIONNAIRE_VERSION} from './data.mjs';
 const driveApiVersion='self-explorer-v4-1';
 function driveRandomToken(){const bytes=crypto.getRandomValues(new Uint8Array(32));return btoa(String.fromCharCode(...bytes)).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');}
 function driveRandomCode(){const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return 'DP-'+Array.from(crypto.getRandomValues(new Uint8Array(32)),n=>alphabet[n&31]).join('').match(/.{4}/g).join('-');}
@@ -20,7 +21,7 @@ export class AppsScriptTransport{
     else if(path==='archives/current'&&method==='DELETE')action='deleteArchive';
     else throw Error('不支援的存檔操作。');
     const newSessionToken=['create','login'].includes(action)?driveRandomToken():null,recoveryCode=action==='create'?driveRandomCode():body.recoveryCode;
-    const payload={...body,...extra,apiVersion:driveApiVersion,action,...(action==='collect'?{}:{sessionToken:this.#token}),requestId:crypto.randomUUID(),...(newSessionToken?{newSessionToken}:{}),...(['create','login'].includes(action)?{recoveryCode,remember:false}:{})};
+    const payload={...body,...extra,apiVersion:driveApiVersion,questionnaireVersion:QUESTIONNAIRE_VERSION,action,...(action==='collect'?{}:{sessionToken:this.#token}),requestId:crypto.randomUUID(),...(newSessionToken?{newSessionToken}:{}),...(['create','login'].includes(action)?{recoveryCode,remember:false}:{})};
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
     try{
       const response=await this.fetcher(this.endpoint,{method:'POST',mode:'cors',credentials:'omit',redirect:'follow',cache:'no-store',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload),signal:controller.signal});

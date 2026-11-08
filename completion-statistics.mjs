@@ -1,6 +1,6 @@
 import {validateRecord} from './core.mjs';
 import {toArchiveSummary} from './archive-data.mjs';
-export const COMPLETION_STATS_KEY='demonward_panda_v4_completion_statistics_v1';
+export const COMPLETION_STATS_KEY='demonward_panda_v4_wording_94_statistics';
 export class CompletionStatistics{
   constructor({storage,transport,onChange=()=>{},now=()=>new Date().toISOString()}={}){
     Object.assign(this,{storage,transport,onChange,now});this.entries={};this.running=null;this.persisted=true;

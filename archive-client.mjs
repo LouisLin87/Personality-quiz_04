@@ -1,5 +1,6 @@
 import {toArchiveSummary} from './archive-data.mjs';
 import {validateRecord} from './core.mjs';
+import {QUESTIONNAIRE_VERSION} from './data.mjs';
 import {esc,date,resultLabel} from './views.mjs';
 import {validateSupplementDocument} from './supplement-core.mjs';
 export class ArchiveClient{
@@ -28,7 +29,7 @@ export class ArchiveClient{
     const records=[],supplements={};for(let page=1;page<=50;page++){
       if(generation!==this.generation)return;
       const data=await this.request(`results?page=${page}&pageSize=20`);
-      if(!Array.isArray(data.records)||!data.records.every(r=>r.responses===null&&r.includeResponses===false&&validateRecord(r)))throw Error('後台結果格式或題本版本不相容，未顯示紀錄。');
+      if(!Array.isArray(data.records)||!data.records.every(r=>r.questionnaireVersion===QUESTIONNAIRE_VERSION&&r.responses===null&&r.includeResponses===false&&validateRecord(r)))throw Error('後台結果格式或題本版本不相容，未顯示紀錄。');
       for(const[id,s]of Object.entries(data.supplements||{})){
         const r=data.records.find(r=>r.attemptId===id);if(!r||!Number.isInteger(s.revision)||s.revision<0||(s.document!==null&&!validateSupplementDocument(s.document,r)))throw Error('補充文件格式無效，未顯示。');
         supplements[id]={revision:s.revision,document:s.document};
@@ -50,7 +51,7 @@ export class ArchiveClient{
         await this.request('sessions','POST',{recoveryCode:form.get('recoveryCode'),remember:form.has('remember')});this.generation++;this.authenticated=true;this.recoveryCode='';await this.refresh();this.message='已找回私人存檔。可以查看歷史結果，或以上次為基準再測。';
       }
       if(kind==='archive-delete'){
-        await this.request('archives/current','DELETE',{recoveryCode:form.get('recoveryCode')});this.generation++;this.authenticated=false;this.records=[];this.supplements={};this.recoveryCode='';this.message='後台存檔已刪除，所有登入已失效。本機作答與下載檔案需另行刪除。';
+        await this.request('archives/current','DELETE',{recoveryCode:form.get('recoveryCode')});this.generation++;this.authenticated=false;this.records=[];this.supplements={};this.recoveryCode='';this.message='後台存檔中所有題本版本的結果已刪除，所有登入已失效。本機作答與下載檔案需另行刪除。';
       }
     }catch(e){this.message=e.message;}finally{this.busy=false;this.changed();}
   }
@@ -96,7 +97,7 @@ export class ArchiveClient{
     if(!this.checked){target.innerHTML=heading+'<p role="status">正在確認存檔服務…</p>';return;}
     const message=`<p class="archive-message" role="status">${esc(this.displayMessage())}</p>`;
     if(!this.authenticated){
-      target.innerHTML=heading+`${!this.available?'<details class="archive-unavailable"><summary>了解私人存檔與找回碼</summary>':''}<p>免姓名、Email 或帳號。主動建立私人存檔後，以找回碼在其他裝置查看結果。找回碼相當於私人鑰匙，請勿公開；遺失後無法代為找回。</p>${message}
+      target.innerHTML=heading+`${!this.available?'<details class="archive-unavailable"><summary>了解私人存檔與找回碼</summary>':''}<p>免姓名、Email 或帳號。主動建立私人存檔後，以找回碼在其他裝置查看結果。同一找回碼可沿用，新舊題本分開顯示；刪除私人存檔會刪除所有版本。找回碼相當於私人鑰匙，請勿公開；遺失後無法代為找回。</p>${message}
         ${!this.available?'<button class="button" data-archive-action="refresh">重新連線存檔服務</button>':''}
         <div class="archive-forms"><form id="archive-create"><h3>第一次保存</h3><p>後台保存測驗日期、六軸分數、題數、版本、當時生活狀態及階段回饋；不接收逐題答案。自由補充文字需在結果頁另行同意保存。閒置 365 天會刪除。</p><label class="checkline"><input type="checkbox" name="consent" required><span>我同意把結果存入私人存檔，並自動保存之後在此瀏覽器完成的結果。</span></label>
         ${this.getCurrent()?`<label class="checkline"><input type="checkbox" name="includeCurrent" checked><span>一併保存這次已完成的結果摘要。</span></label>`:this.getLocal().length?`<label class="checkline"><input type="checkbox" name="includeExisting"><span>一併保存這個瀏覽器已有的 ${this.getLocal().length} 次紀錄（選填）</span></label>`:''}

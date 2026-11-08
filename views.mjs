@@ -1,4 +1,4 @@
-import { AXES, TYPE_NAMES } from './data.mjs';
+import { AXES, TYPE_NAMES, ANSWER_EXIT } from './data.mjs';
 import { compareResults, FEEDBACK_REASONS } from './core.mjs';
 export const esc = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 export const date = value => new Intl.DateTimeFormat('zh-TW',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Taipei'}).format(new Date(value));
@@ -14,8 +14,7 @@ function axisView(a,axis){
 }
 export function quizView(d,questions,start,supplementMarkup) {
   const q=questions[d.index],done=d.index-start,total=questions.length-start;
-  const layout=[[1,0,-1],[0,1,-1],[1,-1,0]][q.id%3];
-  const options=[...layout.map(value=>{const c=q.choices.find(choice=>choice.value===value);return[c.value,c.text];}),['skip','我無法判斷，或這些都不符合我（不計分）']];
+  const options=[...q.choices.map(c=>[c.value,c.text]),['skip',ANSWER_EXIT]];
   return `<section class="narrow quiz-page"><div class="quiz-top"><span>${d.phase==='base'?'主測驗':d.phase==='short'?'平手補題':'完整探索'}</span><span id="question-count">${done+1} / ${total}</span></div>
     <progress class="progress" value="${done}" max="${total}" aria-label="這一段作答進度"></progress>
     ${start?`<p class="chapter-note">前 ${start} 題已保存</p>`:''}
@@ -31,7 +30,7 @@ export function homeView(state) {
     <section class="journey" aria-labelledby="journey-title"><h2 id="journey-title">一段一段，照自己的步調</h2><ol class="journey-list"><li><strong>24 題起步</strong><p>先看看六個面向的偏好。</p></li><li><strong>平手時，再聊兩題</strong><p>只針對資料足夠且 50／50 的面向，各補兩題、只補一輪；前段共 24～36 題。</p></li><li><strong>看結果，或繼續到 60 題</strong><p>前段完成就有紀錄；資料不足的面向會明確標示。想多了解，再接著探索，已答題目不重複。</p></li></ol></section>
     <section class="axis-preview"><h2>從六個角度認識自己</h2><p>沒有哪一側比較好，點開看看兩種日常的樣子。</p>${AXES.map(a=>`<details><summary><span>${a.name}</span><span class="axis-preview-poles">${a.left} / ${a.right}</span></summary><div><p><strong>${a.leftName}</strong>　${a.leftDescription}</p><p><strong>${a.rightName}</strong>　${a.rightDescription}</p></div></details>`).join('')}</section>
     <details class="privacy-note"><summary>開始前，了解資料與測驗限制</summary><p>題目隨機排列，續答維持本次順序；仍平手時保留未定。不要求姓名、Email 或裝置指紋。私人存檔經同意後保存摘要；自由補充文字先留本機，須在結果頁另行同意並保存才傳送。</p><p>這是測試題本，計分比例不是類型機率或準確率。A/O、H/C 是本站自訂探索軸。題目多寡與平手與否，不代表已通過心理計量驗證。</p><p><a href="./README.md">版本說明</a> · <a href="./PRIVACY.md">資料說明</a></p></details></div></div>
-    ${state.attempts.length?`<section class="history"><h2>留在這裡的探索紀錄</h2><ul class="history-list">${state.attempts.slice(-5).reverse().map(r=>`<li><div><strong>${esc(resultLabel(r))}</strong><small>${date(r.completedAt)} · ${r.questionCount} 題 · ${r.stage==='full'?'完整探索':r.stage==='short'?'前段完成':'初步結果'}</small></div><button class="button" data-action="result" data-id="${esc(r.attemptId)}">查看</button></li>`).join('')}</ul><div class="actions"><button class="button" data-action="export-all">下載全部紀錄</button><button class="button text danger" data-action="clear">刪除本版本機資料</button></div></section>`:state.draft||Object.keys(state.supplements||{}).length||Object.keys(state.supplementDrafts||{}).length?'<div class="history"><button class="button text danger" data-action="clear">刪除本版本機資料</button></div>':''}`;
+    <p class="local-note version-note">本次使用新版題目；<a href="./legacy-v4-beta.9.3.html">查看舊題本的紀錄或續答</a>。私人找回碼可沿用，兩版紀錄分開顯示。</p>${state.attempts.length?`<section class="history"><h2>留在這裡的探索紀錄</h2><ul class="history-list">${state.attempts.slice(-5).reverse().map(r=>`<li><div><strong>${esc(resultLabel(r))}</strong><small>${date(r.completedAt)} · ${r.questionCount} 題 · ${r.stage==='full'?'完整探索':r.stage==='short'?'前段完成':'初步結果'}</small></div><button class="button" data-action="result" data-id="${esc(r.attemptId)}">查看</button></li>`).join('')}</ul><div class="actions"><button class="button" data-action="export-all">下載全部紀錄</button><button class="button text danger" data-action="clear">刪除本版本機資料</button></div></section>`:state.draft||Object.keys(state.supplements||{}).length||Object.keys(state.supplementDrafts||{}).length?'<div class="history"><button class="button text danger" data-action="clear">刪除本版本機資料</button></div>':''}`;
 }
 export function completionView(r) {
   const remaining=60-r.questionCount;

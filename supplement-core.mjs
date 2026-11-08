@@ -6,8 +6,8 @@ export const SUPPLEMENT_CONFIRMATIONS={
   SN:['先看實際例子和細節','先看大方向和事情的關聯'],
   TF:['先看理由和標準是否一致','先看自己重視的事和相關人的需要'],
   JP:['先排大概的順序','先保留調整空間'],
-  AO:['先做個能回頭的小嘗試','先確認重要的未知和風險'],
-  HC:['先直接表達關心或肯定','先留點空間，或用實際行動支持']
+  AO:['在低風險且可回頭時先試一小步','在低風險且可回頭時先多了解一些'],
+  HC:['先用話語表達關心或肯定','先用實際幫忙表達支持']
 };
 const supplementBank=[...BASE_QUESTIONS,...EXTENDED_QUESTIONS,...FOLLOWUP_QUESTIONS];
 const supplementDate=v=>typeof v==='string'&&Number.isFinite(Date.parse(v));

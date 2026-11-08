@@ -1,5 +1,5 @@
 import {PRESENTATION_VERSION,canonicalQuestionPool,validateOrderPool,orderedQuestionIds} from './presentation.mjs';
-import { AXES, BASE_QUESTIONS, EXTENDED_QUESTIONS, FOLLOWUP_QUESTIONS, QUESTIONNAIRE_VERSION, SCORING_VERSION, SCHEMA_VERSION } from './data.mjs';
+import { AXES, BASE_QUESTIONS, EXTENDED_QUESTIONS, FOLLOWUP_QUESTIONS, QUESTIONNAIRE_VERSION, LEGACY_QUESTIONNAIRE_VERSION, LEGACY_ITEM_VERSIONS, SCORING_VERSION, SCHEMA_VERSION } from './data.mjs';
 
 export const STAGES = ['base', 'short', 'full'];
 export const ALL_QUESTIONS = [...BASE_QUESTIONS, ...EXTENDED_QUESTIONS, ...FOLLOWUP_QUESTIONS];
@@ -107,7 +107,7 @@ function validFeedback(f,completedAt) {
 }
 export function validateRecord(r, requireResponses=false) {
   try {
-    if(!r||r.schemaVersion!==SCHEMA_VERSION||r.questionnaireVersion!==QUESTIONNAIRE_VERSION||r.scoringVersion!==SCORING_VERSION
+    if(!r||r.schemaVersion!==SCHEMA_VERSION||![QUESTIONNAIRE_VERSION,LEGACY_QUESTIONNAIRE_VERSION].includes(r.questionnaireVersion)||r.scoringVersion!==SCORING_VERSION
       ||!isId(r.attemptId)||!(r.baselineAttemptId===null||isId(r.baselineAttemptId))||r.baselineAttemptId===r.attemptId
       ||r.isRetest!==Boolean(r.baselineAttemptId)||!Number.isInteger(r.retestSequence)||r.retestSequence<1||r.retestSequence>10000
       ||!['stable','some','major'].includes(r.state)||r.language!=='zh-Hant'||typeof r.includeResponses!=='boolean'||!STAGES.includes(r.stage)
@@ -147,11 +147,13 @@ export function validateRecord(r, requireResponses=false) {
     const answers={};
     for(const a of r.responses) {
       const q=ALL_QUESTIONS.find(q=>q.id===a.questionId);
-      if(!q||q.itemVersion!==a.itemVersion||!isAnswer(a.answer)) return false;
+      const itemVersion=r.questionnaireVersion===LEGACY_QUESTIONNAIRE_VERSION?LEGACY_ITEM_VERSIONS[a.questionId]:q?.itemVersion;
+      if(!q||itemVersion!==a.itemVersion||!isAnswer(a.answer)) return false;
       answers[a.questionId]=a.answer;
     }
     const expected=evaluate(answers,r);
-    if(!equal(expected.responses,r.responses)||!equal(expected.tiedAxes,r.tiedAxes)) return false;
+    const expectedResponses=expected.responses.map(a=>({...a,itemVersion:r.questionnaireVersion===LEGACY_QUESTIONNAIRE_VERSION?LEGACY_ITEM_VERSIONS[a.questionId]:a.itemVersion}));
+    if(!equal(expectedResponses,r.responses)||!equal(expected.tiedAxes,r.tiedAxes)) return false;
     return expected.snapshots.every((s,i)=>equal(s.axes,r.snapshots[i].axes));
   } catch { return false; }
 }

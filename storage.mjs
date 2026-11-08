@@ -2,7 +2,7 @@ import {validateOrderPool} from './presentation.mjs';
 import { QUESTIONNAIRE_VERSION } from './data.mjs';
 import { ALL_QUESTIONS, presentedQuestions, validateRecord, isAnswer } from './core.mjs';
 import {validateSupplementDocument} from './supplement-core.mjs';
-export const STORAGE_KEY = 'demonward_panda_v4_input_sound_beta_local';
+export const STORAGE_KEY = 'demonward_panda_v4_wording_94_local';
 const validStorageId = value => typeof value==='string' && /^[a-zA-Z0-9-]{1,80}$/.test(value);
 function validDraft(d,attempts) {
   try {
@@ -26,7 +26,7 @@ export function loadState(storage) {
   try {
     const raw=storage.getItem(STORAGE_KEY);if(!raw)return{state:empty,warning:''};
     const saved=JSON.parse(raw);if(!saved||!Array.isArray(saved.attempts))throw Error('Invalid state');
-    const attempts=saved.attempts.filter(r=>validateRecord(r,true));
+    const attempts=saved.attempts.filter(r=>r.questionnaireVersion===QUESTIONNAIRE_VERSION&&validateRecord(r,true));
     let draft=saved.draft||null,warning=attempts.length===saved.attempts.length?'':'部分本機紀錄格式不完整，已略過顯示。';
     if(!validDraft(draft,attempts)){draft=null;warning='上次未完成進度與目前題本不相容；有效的已完成結果仍保留。';}
     const supplements={},supplementDrafts={},supplementBaseRevisions={};
