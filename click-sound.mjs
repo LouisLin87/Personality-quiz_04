@@ -1,3 +1,4 @@
+import {tx,getLocale,questionCopy} from './i18n.mjs';
 import {BufferedClickAudio} from './buffered-audio.mjs';
 export const SOUND_PREF_KEY='demonward_panda_v4_input_sound_audio_v1';
 export class UIClickSound{
@@ -14,7 +15,7 @@ export class UIClickSound{
     root.addEventListener('change',event=>{if(event.target.tagName==='SELECT'&&!event.target.disabled)return this.play();});
     root.addEventListener('visibilitychange',()=>{if(root.hidden)this.stop();});
   }
-  update(){if(this.button){this.button.textContent=this.enabled?'音效：開':'音效：關';this.button.setAttribute('aria-pressed',String(this.enabled));}}
+  update(){if(this.button){this.button.textContent=this.enabled?tx('音效：開'):tx('音效：關');this.button.setAttribute('aria-pressed',String(this.enabled));}}
   stop(){this.generation++;this.engine.stop();}
   setEnabled(enabled){this.enabled=Boolean(enabled);if(!this.enabled)this.stop();if(this.status)this.status.textContent='';this.update();try{this.storage.setItem(SOUND_PREF_KEY,this.enabled?'1':'0');}catch{}}
   control(event){
@@ -36,6 +37,6 @@ export class UIClickSound{
     if(!this.enabled||!this.audio)return false;
     const generation=++this.generation;
     try{const played=await this.engine.play();if(generation===this.generation&&this.status)this.status.textContent='';return played;}
-    catch(error){if(generation===this.generation&&error?.name!=='AbortError'&&this.status)this.status.textContent='音效暫時無法播放，測驗仍可使用；可切換音效按鈕重試。';return false;}
+    catch(error){if(generation===this.generation&&error?.name!=='AbortError'&&this.status)this.status.textContent=tx('音效暫時無法播放，測驗仍可使用；可切換音效按鈕重試。');return false;}
   }
 }
