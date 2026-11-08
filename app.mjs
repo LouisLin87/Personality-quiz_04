@@ -13,7 +13,7 @@ const storage={getItem:k=>localStorage.getItem(k),setItem:(k,v)=>localStorage.se
 new UIClickSound({root:document,storage});
 const loaded=loadState(storage);
 let state=loaded.state, activeResultId=null, pendingBaselineId=null;
-const archive=new ArchiveClient({transport:new AppsScriptTransport(DRIVE_ARCHIVE_CONFIG),getLocal:()=>state.attempts,onChange:()=>{if(activeResultId&&!findResult(activeResultId))renderHome();},onView:id=>renderResult(id),onRetest:id=>renderSetup(id)});
+const archive=new ArchiveClient({transport:new AppsScriptTransport(DRIVE_ARCHIVE_CONFIG),getLocal:()=>state.attempts,getCurrent:()=>state.attempts.find(r=>r.attemptId===activeResultId)||null,onChange:()=>{if(activeResultId&&!findResult(activeResultId))renderHome();},onView:id=>renderResult(id),onRetest:id=>renderSetup(id)});
 const notes=new SupplementUI({getState:()=>state,persist,getRecord:findResult,getRemote:id=>archive.supplements[id],saveRemote:(doc,r,rev)=>archive.saveSupplement(doc,r,rev),withdrawRemote:(id,rev)=>archive.withdrawSupplement(id,rev),isAuthenticated:()=>archive.authenticated,announce});
 function warn(text){const node=document.querySelector('#storage-warning');node.textContent=text;node.hidden=!text;}
 function announce(text){document.querySelector('#announcement').textContent=text;}
@@ -60,7 +60,7 @@ function renderTieIntro(r){
   screen(`<section class="narrow panel chapter-intro"><p class="eyebrow">24 題已保存</p><h1>有 ${r.tiedAxes.length} 個軸，兩側同樣常見。</h1><p class="lead">24 題初步結果已保存。接著只為 50／50 的軸各補兩題，共 ${r.tiedAxes.length*2} 題。</p><p>${r.tiedAxes.map(k=>{const a=AXES.find(a=>a.key===k);return `${a.left}/${a.right} ${a.name}`;}).join('、')}</p><p>只補這一輪，仍平手就保留未定。</p><div class="actions"><button class="button primary" data-action="resume">開始 ${r.tiedAxes.length*2} 題平手補題</button><button class="button" data-action="peek-result">先看 24 題初步結果</button></div></section>`,'tie-intro');
 }
 function renderCompletion(id){const r=findResult(id);if(!r)return renderHome();activeResultId=id;screen(completionView(r)+archive.statusHTML(),'completion');}
-function renderResult(id){const r=findResult(id);if(!r)return renderHome();activeResultId=id;screen(resultView(r,findResult(r.baselineAttemptId),state.draft,!r.responses)+'<section id="supplement-root" class="result-section"></section>'+archive.statusHTML(),'result');notes.mountResult(id);if(!r.responses){for(const control of app.querySelectorAll('#feedback-form input,#feedback-form button'))control.disabled=true;document.querySelector('#feedback-status').textContent='這是歷史回饋，僅供查看。';}}
+function renderResult(id){const r=findResult(id);if(!r)return renderHome();activeResultId=id;screen(resultView(r,findResult(r.baselineAttemptId),state.draft,!r.responses)+'<details class="result-disclosure"><summary>查看或補充自己的想法</summary><section id="supplement-root" class="result-section"></section></details><details class="result-disclosure" id="result-archive"><summary>儲存與找回 Google 紀錄</summary><section id="archive-panel" class="archive-panel"></section></details>'+archive.statusHTML(),'result');notes.mountResult(id);archive.render();if(!r.responses){for(const control of app.querySelectorAll('#feedback-form input,#feedback-form button'))control.disabled=true;document.querySelector('#feedback-status').textContent='這是歷史回饋，僅供查看。';}}
 function startNext(phase){
   const r=findResult(activeResultId);if(!r||r.stage!==(phase==='short'?'base':'short'))return;
   if(state.draft?.attemptId===r.attemptId){renderQuiz();return;}
@@ -100,6 +100,7 @@ app.addEventListener('change',event=>{
 app.addEventListener('click',event=>{
   const button=event.target.closest('[data-action]');if(!button)return;const action=button.dataset.action;
   if(action==='setup')renderSetup();if(action==='resume')renderQuiz();
+  if(action==='open-archive'){const detail=document.querySelector('#result-archive');if(detail){detail.open=true;detail.querySelector('summary').focus();detail.scrollIntoView({block:'start',behavior:'instant'});}}
   if(['home','pause'].includes(action)){persist();renderHome();}
   if(action==='previous'&&state.draft.index>draftStart(state.draft)){state.draft.index--;persist();renderQuiz();}
   if(action==='result')renderResult(button.dataset.id);

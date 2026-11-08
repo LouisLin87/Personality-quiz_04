@@ -3,7 +3,7 @@ function driveRandomToken(){const bytes=crypto.getRandomValues(new Uint8Array(32
 function driveRandomCode(){const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return 'DP-'+Array.from(crypto.getRandomValues(new Uint8Array(32)),n=>alphabet[n&31]).join('').match(/.{4}/g).join('-');}
 export class AppsScriptTransport{
   #token='';
-  constructor({endpoint='',blockedDeploymentIds=[],fetcher=fetch}={}){this.endpoint=endpoint;this.blockedDeploymentIds=blockedDeploymentIds;this.fetcher=fetcher;this.kind='google-drive';this.supportsRemember=false;}
+  constructor({endpoint='',blockedDeploymentIds=[],fetcher=globalThis.fetch.bind(globalThis)}={}){this.endpoint=endpoint;this.blockedDeploymentIds=blockedDeploymentIds;this.fetcher=fetcher;this.kind='google-drive';this.supportsRemember=false;}
   async request(path,method='GET',body={}){
     const match=this.endpoint.match(/^https:\/\/script\.google\.com\/macros\/s\/([A-Za-z0-9_-]+)\/exec$/);
     if(!match||this.blockedDeploymentIds.includes(match[1]))throw Error('尚未設定本版專用的 Apps Script 接收網址；本機作答仍可使用。');

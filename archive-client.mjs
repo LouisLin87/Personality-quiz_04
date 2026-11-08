@@ -3,8 +3,8 @@ import {validateRecord} from './core.mjs';
 import {esc,date} from './views.mjs';
 import {validateSupplementDocument} from './supplement-core.mjs';
 export class ArchiveClient{
-  constructor({getLocal,onChange,onView,onRetest,transport=null}){
-    this.transport=transport;this.supportsRemember=transport?.supportsRemember!==false;this.getLocal=getLocal;this.onChange=onChange;this.onView=onView;this.onRetest=onRetest;
+  constructor({getLocal,onChange,onView,onRetest,getCurrent=()=>null,transport=null}){
+    this.getCurrent=getCurrent;this.transport=transport;this.supportsRemember=transport?.supportsRemember!==false;this.getLocal=getLocal;this.onChange=onChange;this.onView=onView;this.onRetest=onRetest;
     this.authenticated=false;this.available=false;this.checked=false;this.records=[];this.supplements={};this.recoveryCode='';this.message='';this.busy=false;this.mode=transport?.kind||'local-test';this.queue=Promise.resolve();this.generation=0;
     document.addEventListener('submit',event=>{if(['archive-create','archive-login','archive-delete'].includes(event.target.id)){event.preventDefault();this.submit(event.target.id,new FormData(event.target));}});
     document.addEventListener('click',event=>{const b=event.target.closest('[data-archive-action]');if(!b)return;const action=b.dataset.archiveAction;if(action==='hide-code'){this.recoveryCode='';this.render();}if(action==='logout')this.logout();if(action==='sync')this.syncLocal();if(action==='refresh')this.initialize();if(action==='view')this.onView(b.dataset.id);if(action==='retest')this.onRetest(b.dataset.id);});
@@ -43,6 +43,7 @@ export class ArchiveClient{
       if(kind==='archive-create'){
         if(!form.has('consent'))throw Error('請先勾選結果存檔同意。');
         const r=await this.request('archives','POST',{consent:true,remember:form.has('remember')});this.generation++;this.authenticated=true;this.recoveryCode=r.recoveryCode;this.message='私人存檔已建立。請保存下方找回碼；它只顯示這一次。';
+        if(form.has('includeCurrent')){const current=this.getCurrent();if(current)await this.request('results/'+current.attemptId,'PUT',{record:toArchiveSummary(current)});}
         if(form.has('includeExisting'))await this.saveAllLocal();await this.refresh();
       }
       if(kind==='archive-login'){
@@ -97,8 +98,8 @@ export class ArchiveClient{
     if(!this.authenticated){
       target.innerHTML=heading+`${!this.available?'<details class="archive-unavailable"><summary>了解私人存檔與找回碼</summary>':''}<p>免姓名、Email 或帳號。主動建立私人存檔後，以找回碼在其他裝置查看結果。找回碼相當於私人鑰匙，請勿公開；遺失後無法代為找回。</p>${message}
         ${!this.available?'<button class="button" data-archive-action="refresh">重新連線存檔服務</button>':''}
-        <div class="archive-forms"><form id="archive-create"><h3>第一次保存</h3><p>後台保存測驗日期、六軸分數、題數、版本、當時生活狀態及階段回饋；不接收三個選項的逐題答案。自由補充文字需在結果頁另行同意保存。閒置 365 天會刪除。</p><label class="checkline"><input type="checkbox" name="consent" required><span>我同意把結果存入私人存檔，並自動保存之後在此瀏覽器完成的結果。</span></label>
-        ${this.getLocal().length?`<label class="checkline"><input type="checkbox" name="includeExisting"><span>一併保存這個瀏覽器已有的 ${this.getLocal().length} 次紀錄（選填）</span></label>`:''}
+        <div class="archive-forms"><form id="archive-create"><h3>第一次保存</h3><p>後台保存測驗日期、六軸分數、題數、版本、當時生活狀態及階段回饋；不接收逐題答案。自由補充文字需在結果頁另行同意保存。閒置 365 天會刪除。</p><label class="checkline"><input type="checkbox" name="consent" required><span>我同意把結果存入私人存檔，並自動保存之後在此瀏覽器完成的結果。</span></label>
+        ${this.getCurrent()?`<label class="checkline"><input type="checkbox" name="includeCurrent" checked><span>一併保存這次已完成的結果摘要。</span></label>`:this.getLocal().length?`<label class="checkline"><input type="checkbox" name="includeExisting"><span>一併保存這個瀏覽器已有的 ${this.getLocal().length} 次紀錄（選填）</span></label>`:''}
         ${this.supportsRemember?'<label class="checkline"><input type="checkbox" name="remember"><span>記住這個瀏覽器 30 天（私人裝置適用）</span></label>':'<p>登入只保留在目前頁面，最長 12 小時。重新整理或換裝置後，請再輸入找回碼。</p>'}<button class="button" type="submit" ${disabled}>建立私人存檔</button></form>
         <form id="archive-login"><h3>已有找回碼</h3><label class="archive-label" for="archive-login-code">私人找回碼</label><input id="archive-login-code" class="archive-input" name="recoveryCode" type="password" maxlength="100" autocomplete="off" spellcheck="false" required>${this.supportsRemember?'<label class="checkline"><input type="checkbox" name="remember"><span>記住這個瀏覽器 30 天</span></label>':'<p>找回碼及登入憑證不寫入瀏覽器儲存。重新整理後需再次登入。</p>'}<p>這是你的私人存檔；找回後，新完成的結果會自動保存。本機已有紀錄需由你另外選擇同步。</p><button class="button" type="submit" ${disabled}>找回我的結果</button></form></div>${!this.available?'</details>':''}`;return;
     }
