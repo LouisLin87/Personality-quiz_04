@@ -1,4 +1,4 @@
-import {buildResultImageData,RESULT_IMAGE_COPY} from './result-insights.mjs';
+import {buildResultImageData,RESULT_IMAGE_COPY,PRELIMINARY_IMAGE_COPY} from './result-insights.mjs';
 export function wrapImageText(text,maxWidth,measure){
  if(!(maxWidth>0))throw Error('Invalid text width');
  const lines=[];let current='';
@@ -27,7 +27,8 @@ export async function renderResultImage(record,locale='zh'){
  const bodySize=data.locale==='en'?27:29,lineHeight=38;
  const cards=[{title:copy.strengths,items:data.strengths,empty:copy.noStrengths},{title:copy.cautions,items:data.cautions,empty:copy.noCautions}];
  for(const card of cards){card.rows=card.items.length?card.items.map(item=>({...item,lines:lines(item.text,bodySize,panelWidth-90)})):[{pole:null,lines:lines(card.empty,bodySize,panelWidth-60)}];card.bodyHeight=card.rows.reduce((h,row)=>h+row.lines.length*lineHeight+24,0);}
- let titleSize=data.kind==='typed'?116:data.locale==='en'?64:76;
+ const early=data.kind==='preliminary'?PRELIMINARY_IMAGE_COPY[data.locale]:null;
+ let titleSize=data.kind==='typed'?116:early?64:data.locale==='en'?64:76;
  while(lines(data.title,titleSize,content,700).length>1&&titleSize>46)titleSize-=2;
  const titleLines=lines(data.title,titleSize,content,700);
  const extra=data.kind==='tied'?112:0;
@@ -48,9 +49,11 @@ export async function renderResultImage(record,locale='zh'){
  rounded(0,0,W,14,0,ink);text(copy.brand,pad,45,30,ink,700);text('V4',W-pad-65,45,30,ink,700);
  const avatarSize=132,avatarX=W-pad-avatarSize,avatarY=92;
  ctx.save();ctx.beginPath();ctx.arc(avatarX+avatarSize/2,avatarY+avatarSize/2,avatarSize/2,0,Math.PI*2);ctx.clip();ctx.drawImage(avatar,avatarX,avatarY,avatarSize,avatarSize);ctx.restore();
- text(data.locale==='en'?`${copy.eyebrow} · ${data.questionCount} questions`:`${copy.eyebrow} · ${data.questionCount} 題`,pad,119,27,muted);
- titleLines.forEach((line,i)=>text(line,pad,178+i*(titleSize+10),titleSize,ink,700));
- if(data.name)text(data.name,pad,306,34,muted,600);
+ const eyebrow=copy.eyebrow;
+ text(data.locale==='en'?`${eyebrow} · ${data.questionCount} questions`:`${eyebrow} · ${data.questionCount} 題`,pad,119,27,muted);
+ titleLines.forEach((line,i)=>text(line,pad,(early?225:178)+i*(titleSize+10),titleSize,ink,700));
+ if(early)paragraph(early.note,pad,300,content,28,muted,400,36);
+ else if(data.name)text(data.name,pad,306,34,muted,600);
  else paragraph(data.kind==='tied'?copy.tieNote:copy.missingNote,pad,280,content,28,muted,400,36);
  if(data.kind==='tied'){
   data.candidates.forEach((code,i)=>{const x=pad+i*245;rounded(x,340,225,52,12,'#E2EADD');text(code,x+18,351,28,ink,600);});

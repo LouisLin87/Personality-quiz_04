@@ -111,7 +111,7 @@ Google 測驗紀錄：正在保存，請稍候確認。	Saving your summary to G
 原始結果	Original result
 只刪除本機這則補充，後台文字需另行撤回。確定刪除嗎？	Delete this note from this browser? Its cloud copy needs to be removed separately.
 只寫想補充的情況，不用填姓名或聯絡方式。	Just describe the situation. Leave out names and contact details.
-只補這一輪，仍平手就保留未定。	There's just one round of follow-ups. Any ties left afterward stay tied.
+只補這一輪。仍同分時，結果會顯示兩側得分相同。	There's one round of follow-ups. Any ties that remain are shown as equal scores.
 只針對資料足夠且 50／50 的面向，各補兩題、只補一輪；前段共 24～36 題。	Only areas with enough answers and a 50/50 score get two follow-ups each, for one round. The first section totals 24–36 questions.
 只顯示這一次。持有此碼的人可以讀取或刪除此存檔。	This code is shown only once. Anyone with it can read or delete this archive.
 可為每個平手軸補兩題，共	Each tied area can get two follow-ups. Total:
@@ -409,7 +409,7 @@ Google 測驗紀錄：正在保存，請稍候確認。	Saving your summary to G
 題的詳細解讀	 questions: a closer look
 題目不容易理解	Some questions were hard to understand
 題目導覽	Question navigation
-題目隨機排列，續答維持本次順序；仍平手時保留未定。不要求姓名、Email 或裝置指紋。私人存檔經同意後保存摘要；自由補充文字先留本機，須在結果頁另行同意並保存才傳送。	Questions are shuffled, and resuming keeps your order. Remaining ties stay tied. We don't ask for your name, email, or device fingerprint. Private archives save summaries with your consent. Notes stay local unless you separately agree to save them on the results page.
+題目隨機排列，續答維持本次順序。初步結果會標出同分與有效回答較少的面向。不要求姓名、Email 或裝置指紋。私人存檔經同意後保存摘要；自由補充文字先留本機，須在結果頁另行同意並保存才傳送。	Questions are shuffled, and resuming keeps your order. Your early result flags equal scores and areas with too few scored answers. We don't ask for your name, email, or device fingerprint. Private archives save summaries with your consent. Notes stay local unless you separately agree to save them on the results page.
 題結果仍可使用。未完成的答案尚未加入分數。	-question result is still available. Unfinished answers haven't been added to its scores.
 題結果仍會保留。	-question result stays saved.
 題結果已存入私人存檔。	-question result is saved in your private archive.
@@ -472,4 +472,30 @@ V4 資料表結構不符，尚未寫入。	The V4 table structure doesn't match.
 資料表已超出本測試版讀取範圍。	This table exceeds the beta's read limit.
 資料表有重複編號。	The table contains duplicate IDs.
 這個完成階段已有不同摘要，未覆蓋紀錄。	This completed section already has a different summary. It wasn't overwritten.
-需要玩家同意自動保存結果摘要。	Automatic summaries need the player's consent first.`.split('\n').map(line=>line.split('\t')));
+需要玩家同意自動保存結果摘要。	Automatic summaries need the player's consent first.
+目前的作答傾向	Your responses so far
+目前各面向的得分接近或有效回答較少。	Your scores are close or there are too few scored answers to describe a clear preference.
+這次回答較偏向	The clearest preferences in your answers are 
+六個作答面向	Six areas in your answers
+有效回答不足	Too few answers
+兩側得分相同	Equal scores
+兩側得分接近	Close scores
+偏向 	Leans toward 
+點選面向查看兩側分數。這份摘要供自我探索與對話參考。	Select an area to see both scores. Use this summary for self-reflection and conversation.
+回答得分	Answer points
+此面向的有效回答尚未達門檻。	This area still needs more scored answers.
+日常情境回想	Everyday reflection
+回想最近一次遇到類似情況時，你做了什麼。儲存的回想只留在此瀏覽器，測驗分數依題目回答計算。	Think about what you did the last time something similar happened. Saved reflections stay in this browser. Quiz scores come from your quiz answers.
+留下自己的回想（選填）	Add your reflection (optional)
+這個傾向像你平常的做法嗎？	Does this fit how you usually do things?
+尚未選擇	Select an option
+這像我	This sounds like me
+要看情況	It depends
+我會用別的方式	I would do it differently
+我的生活例子（選填）	My example (optional)
+儲存在此瀏覽器	Save in this browser
+已儲存在此瀏覽器。	Saved in this browser.
+已清除此回想。	Reflection cleared.
+請確認選項與文字長度。	Check your selection and the length of your note.
+這次未能儲存，請再試一次。	Your reflection could not be saved. Please try again.
+繼續作答	Keep answering`.split('\n').map(line=>line.split('\t')));

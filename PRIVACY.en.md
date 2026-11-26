@@ -12,6 +12,8 @@ Your question order, progress, completed results, saved notes, and unfinished no
 
 Choosing Next saves the current note. Collapsing the note field keeps its text; clearing it and choosing Next removes that local note. Sound is bundled with the site and doesn't record audio or contact its original asset source.
 
+Everyday reflection choices and examples are saved only in this browser when you choose to save them. To remove a reflection, clear its fields and save again, or clear this edition's local data. Scores and downloads continue to use the quiz record.
+
 ## Automatic completion summaries: a separate choice
 
 If you choose **Agree to automatic summaries and start**, each completed section sends a summary to the owner's private Google spreadsheet. A private archive or recovery code is not required for this summary.

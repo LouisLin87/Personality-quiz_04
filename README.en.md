@@ -2,7 +2,7 @@
 
 A quiet space to explore your everyday preferences, in Chinese or natural, everyday English. Use **中文 / English** at the top of the page. Your language choice stays in this browser. A link ending in `?lang=en` opens English directly.
 
-Start with 24 questions. Areas with enough answered questions and exactly tied scores get two follow-ups each, for one round. The first section has 24–36 questions. Then view your result or choose to finish all 60. Questions are shuffled, don't repeat within an exploration, and keep their order when you resume.
+Start with 24 questions. Areas with enough answered questions and exactly tied scores get two follow-ups each, for one round. The first section has 24–36 questions. Then view your result or choose to finish all 60. After 30 questions, you can see your responses so far, expand the area scores, and save optional everyday reflections in this browser. Questions are shuffled, don't repeat within an exploration, and keep their order when you resume.
 
 Each question has three scored choices and a fourth, unscored exit. The middle choice means the two sides genuinely fit about equally, or you have no clear preference—not that you cannot judge the situation. Optional notes are saved with Next. Note text doesn't automatically change quiz scores.
 

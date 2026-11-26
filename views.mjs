@@ -1,7 +1,8 @@
 import {tx,getLocale,questionCopy} from './i18n.mjs';
-import {getResultInsights,RESULT_IMAGE_COPY} from './result-insights.mjs';
+import {getDailyScenarios,getResponseTendencies,getResultInsights,RESULT_IMAGE_COPY} from './result-insights.mjs';
 import { AXES, TYPE_NAMES, ANSWER_EXIT } from './data.mjs';
-import { compareResults, FEEDBACK_REASONS } from './core.mjs';
+import { compareResults, FEEDBACK_REASONS, isPreliminaryStage, EARLY_RESULT_QUESTION_COUNT } from './core.mjs';
+import {SCENARIO_NOTE_LIMIT} from './storage.mjs';
 export const esc = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 export const date = value => new Intl.DateTimeFormat(getLocale()==='en'?'en-US':'zh-TW',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Taipei'}).format(new Date(value));
 export const stateNames = {stable:('大致穩定'),some:('有些變動'),major:('明顯變動')};
@@ -9,7 +10,13 @@ export const stageNames = {base:('24 題主測驗'),short:('平手補題後的�
 const axisRatio=a=>a.status==='insufficient'?tx('資料不足'):tx`${a.leftPercent}%／${a.rightPercent}%`;
 const axisStatus=a=>a.status==='insufficient'?tx('資料不足'):a.status==='balanced'?tx('50／50 · 未定'):a.nearMidpoint?tx`接近中線 · 略偏 ${a.pole}`:tx`本次偏向 ${a.pole}`;
 function candidateCodes(r){return r.insufficientAxes.length?[]:r.axes.reduce((codes,a,i)=>codes.flatMap(code=>(a.status==='balanced'?[AXES[i].left,AXES[i].right]:[a.pole]).map(pole=>code+(i===4?'-':'')+pole)),['']);}
-export function resultLabel(r){if(r.profile64Id)return r.publicResult;if(r.insufficientAxes.length)return tx('資料尚不足');const codes=candidateCodes(r),cores=[...new Set(codes.map(code=>code.slice(0,4)))];return tx`${cores.length<=2?cores.join('／')+' · ':''}${codes.length} 種同分候選`;}
+export function resultLabel(r){
+  if(isPreliminaryStage(r))return responseSummary(r.axes);
+  if(r.profile64Id)return r.publicResult;
+  if(r.insufficientAxes.length)return tx('資料尚不足');
+  const codes=candidateCodes(r),cores=[...new Set(codes.map(code=>code.slice(0,4)))];
+  return tx`${cores.length<=2?cores.join('／')+' · ':''}${codes.length} 種同分候選`;
+}
 function axisView(a,axis){
  const missing=a.status==='insufficient';
  return tx`<article class="axis ${missing?'axis-insufficient':''}"><div class="axis-heading"><h2>${tx(axis.name)} <span class="muted">${axis.left}/${axis.right}</span></h2><span class="axis-status">${axisStatus(a)}</span></div>${missing?tx`<div class="coverage-message"><strong>有效回答 ${a.validCount} / ${a.questionCount} 題</strong><p>至少需要 ${a.minValidCount} 題。這個面向暫不顯示比例與類型。</p></div>`:tx`<div class="axis-labels"><span>${tx(axis.leftName)} ${axis.left} <strong>${a.leftPercent}%</strong></span><span><strong>${a.rightPercent}%</strong> ${axis.right} ${tx(axis.rightName)}</span></div><div class="axis-meter" role="img" aria-label="${axis.left} ${a.leftPercent}%，${axis.right} ${a.rightPercent}%"><span style="width:${a.leftPercent}%"></span></div><p>${a.status==='balanced'?tx('這次有效回答的兩側分數相同，保留未定。'):a.pole===axis.left?tx(axis.leftDescription):tx(axis.rightDescription)}</p>`}<p class="axis-coverage">有效 ${a.validCount}／${a.questionCount} 題 · 不計分 ${a.skippedCount} 題</p></article>`;
@@ -31,17 +38,58 @@ export function homeView(state) {
     <div class="actions home-actions">${state.draft?tx('<button class="button primary" data-action="resume">繼續上次進度 <span aria-hidden="true">→</span></button><button class="button text" data-action="setup">開始新的一次</button>'):tx('<button class="button primary" data-action="setup">開始我的探索 <span aria-hidden="true">→</span></button>')}</div><p class="home-note">不用登入。答案先留在這個瀏覽器。</p></section>
     <section class="journey" aria-labelledby="journey-title"><h2 id="journey-title">一段一段，照自己的步調</h2><ol class="journey-list"><li><strong>24 題起步</strong><p>先看看六個面向的偏好。</p></li><li><strong>平手時，再聊兩題</strong><p>只針對資料足夠且 50／50 的面向，各補兩題、只補一輪；前段共 24～36 題。</p></li><li><strong>看結果，或繼續到 60 題</strong><p>前段完成就有紀錄；資料不足的面向會明確標示。想多了解，再接著探索，已答題目不重複。</p></li></ol></section>
     <section class="axis-preview"><h2>從六個角度認識自己</h2><p>沒有哪一側比較好，點開看看兩種日常的樣子。</p>${AXES.map(a=>tx`<details><summary><span>${tx(a.name)}</span><span class="axis-preview-poles">${a.left} / ${a.right}</span></summary><div><p><strong>${tx(a.leftName)}</strong>　${tx(a.leftDescription)}</p><p><strong>${tx(a.rightName)}</strong>　${tx(a.rightDescription)}</p></div></details>`).join('')}</section>
-    <details class="privacy-note"><summary>開始前，了解資料與測驗限制</summary><p>題目隨機排列，續答維持本次順序；仍平手時保留未定。不要求姓名、Email 或裝置指紋。私人存檔經同意後保存摘要；自由補充文字先留本機，須在結果頁另行同意並保存才傳送。</p><p>這是測試題本，計分比例不是類型機率或準確率。A/O、H/C 是本站自訂探索軸。題目多寡與平手與否，不代表已通過心理計量驗證。</p><p><a href="./README.md">版本說明</a> · <a href="./PRIVACY.md">資料說明</a></p></details></div></div>
+    <details class="privacy-note"><summary>開始前，了解資料與測驗限制</summary><p>題目隨機排列，續答維持本次順序。初步結果會標出同分與有效回答較少的面向。不要求姓名、Email 或裝置指紋。私人存檔經同意後保存摘要；自由補充文字先留本機，須在結果頁另行同意並保存才傳送。</p><p>這是測試題本，計分比例不是類型機率或準確率。A/O、H/C 是本站自訂探索軸。題目多寡與平手與否，不代表已通過心理計量驗證。</p><p><a href="./README.md">版本說明</a> · <a href="./PRIVACY.md">資料說明</a></p></details></div></div>
     <p class="local-note version-note">本次使用新版題目；<a href="./legacy-v4-beta.9.3.html">查看舊題本的紀錄或續答</a>。私人找回碼可沿用，兩版紀錄分開顯示。</p>${state.attempts.length?tx`<section class="history"><h2>留在這裡的探索紀錄</h2><ul class="history-list">${state.attempts.slice(-5).reverse().map(r=>tx`<li><div><strong>${esc(resultLabel(r))}</strong><small>${date(r.completedAt)} · ${r.questionCount} 題 · ${r.stage==='full'?tx('完整探索'):r.stage==='short'?tx('前段完成'):tx('初步結果')}</small></div><button class="button" data-action="result" data-id="${esc(r.attemptId)}">查看</button></li>`).join('')}</ul><div class="actions"><button class="button" data-action="export-all">下載全部紀錄</button><button class="button text danger" data-action="clear">刪除本版本機資料</button></div></section>`:state.draft||Object.keys(state.supplements||{}).length||Object.keys(state.supplementDrafts||{}).length?tx('<div class="history"><button class="button text danger" data-action="clear">刪除本版本機資料</button></div>'):''}`;
 }
-export function completionView(r) {
-  const remaining=60-r.questionCount;
+function preferenceName(axis,pole) {
+  return tx(pole===axis.left?axis.leftName:axis.rightName);
+}
+function responseSummary(axes) {
+  const labels=getResponseTendencies(axes).map(({axis,pole})=>preferenceName(AXES.find(a=>a.key===axis),pole));
+  if(!labels.length)return tx('目前各面向的得分接近或有效回答較少。');
+  const names=getLocale()==='en'?new Intl.ListFormat('en',{type:'unit'}).format(labels):labels.join('、');
+  return tx`這次回答較偏向${names}。`;
+}
+function preliminaryStatus(score) {
+  if(score.status==='insufficient')return tx('有效回答不足');
+  if(score.status==='balanced')return tx('兩側得分相同');
+  if(score.nearMidpoint)return tx('兩側得分接近');
+  return tx`偏向 ${score.pole}`;
+}
+function preliminaryLetterReason(axis,score) {
+  const reason=score.status==='insufficient'?tx('此面向的有效回答尚未達門檻。'):preliminaryStatus(score);
+  return tx`<section class="preliminary-reason" id="preliminary-reason-${axis.key}" aria-labelledby="preliminary-area-${axis.key}" hidden>
+    <h2 id="preliminary-area-${axis.key}">${esc(tx(axis.name))} <span>${axis.left}/${axis.right}</span></h2>
+    <p class="preliminary-score">回答得分 <strong>${axis.left} ${score.leftScore} · ${axis.right} ${score.rightScore}</strong></p>
+    <p>${reason} <span class="preliminary-coverage">有效回答 ${score.validCount} / ${score.questionCount}</span></p>
+  </section>`;
+}
+function preliminaryTendenciesView(axes) {
+  const buttons=AXES.map((axis,i)=>{
+    const pair=axis.left+'/'+axis.right,status=preliminaryStatus(axes[i]);
+    const label=[tx(axis.name),pair,status].join(' · ');
+    return `<button class="preliminary-letter" type="button" id="preliminary-letter-${axis.key}" data-action="explain-letter" aria-expanded="false" aria-controls="preliminary-reason-${axis.key}" aria-label="${esc(label)}"><strong>${pair}</strong><span>${esc(status)}</span></button>`;
+  }).join('');
+  return tx`<h1>目前的作答傾向</h1>
+    <p class="result-summary">${esc(responseSummary(axes))}</p>
+    <p class="result-summary" id="preliminary-letter-hint">點選面向查看兩側分數。這份摘要供自我探索與對話參考。</p>
+    <div class="preliminary-letters" role="group" aria-label="六個作答面向" aria-describedby="preliminary-letter-hint">${buttons}</div>
+    ${AXES.map((axis,i)=>preliminaryLetterReason(axis,axes[i])).join('')}`;
+}
+export function preliminaryView(axes,reflections={}) {
+  return tx`<section class="narrow panel completion"><p class="eyebrow">${EARLY_RESULT_QUESTION_COUNT} 題已完成</p>${preliminaryTendenciesView(axes)}
+    <div class="actions"><button class="button primary" data-action="resume">繼續作答</button><button class="button text" data-action="pause">暫停，稍後再答</button></div>
+    ${dailyScenariosView(axes,reflections)}</section>`;
+}
+export function completionView(r,reflections={}) {
+  const remaining=60-r.questionCount,early=isPreliminaryStage(r);
   return tx`<section class="narrow panel completion"><p class="eyebrow">一段探索，一份紀錄</p><p class="completion-count">${r.questionCount}<span>題已完成</span></p>
-    <h1>這一段，已經完成。</h1><p class="lead">這一段的回答與資料狀態已保存。現在就能查看，也可以繼續探索。</p>
-    <p>${r.tiedAxes.length?tx`已為 ${r.tiedAxes.length} 個平手軸各補兩題。${r.undecidedAxes.length?tx('有些軸仍是 50／50，結果會保留未定。'):tx('這一輪補充已完成。')}`:tx('沒有資料足夠且平手的面向，這一段不需要補題。')}</p>
+    ${early?preliminaryTendenciesView(r.axes):tx('<h1>這一段，已經完成。</h1><p class="lead">這一段的回答與資料狀態已保存。現在就能查看，也可以繼續探索。</p>')}
+    <p>${r.tiedAxes.length?tx`已為 ${r.tiedAxes.length} 個平手軸各補兩題。${!early&&r.undecidedAxes.length?tx('有些軸仍是 50／50，結果會保留未定。'):tx('這一輪補充已完成。')}`:tx('沒有資料足夠且平手的面向，這一段不需要補題。')}</p>
     <div class="completion-actions"><button class="button primary" data-action="show-result">查看結果與詳細解讀 <span aria-hidden="true">→</span></button>
     <button class="button" data-action="continue-full">繼續完成 60 題 <small>再答 ${remaining} 題，已答題目不重複</small></button></div>
-    <p class="download-note">${r.axes.reduce((n,a)=>n+a.validCount,0)} 題有效、${r.axes.reduce((n,a)=>n+a.skippedCount,0)} 題不計分。資料不足的面向仍可查看紀錄。隨時可暫停。未完成長版時，這份 ${r.questionCount} 題結果仍會保留。</p></section>`;
+    <p class="download-note">${r.axes.reduce((n,a)=>n+a.validCount,0)} 題有效、${r.axes.reduce((n,a)=>n+a.skippedCount,0)} 題不計分。資料不足的面向仍可查看紀錄。隨時可暫停。未完成長版時，這份 ${r.questionCount} 題結果仍會保留。</p>
+    ${early?dailyScenariosView(r.axes,reflections):''}</section>`;
 }
 export function detailsView(r) {
   return tx`<section class="result-section"><p class="section-label">手札裡的細節</p><h2>分開看，會更了解自己</h2><p>展開各軸，看看這次回答如何形成分數，以及補題前後的變化。階段使用的題目組合不同，分數變化不等於人格改變。</p>
@@ -53,18 +101,44 @@ export function detailsView(r) {
 }
 function candidateCard(code){return tx`<article class="candidate-card"><h2 class="candidate-code">${esc(code)}</h2><p>${esc(TYPE_NAMES[code.slice(0,4)]?.[getLocale()==='en'?1:0])}</p><span>同分候選</span></article>`;}
 function resultIntro(r){
-  if(r.profile64Id)return tx`<h1 class="result-code">${esc(r.publicResult)}</h1><p class="result-name">${esc(TYPE_NAMES[r.coreType]?.[getLocale()==='en'?1:0])}</p><p class="result-summary">這是你在本次日常情境中的偏好組合。</p>`;
+  if(isPreliminaryStage(r))return preliminaryTendenciesView(r.axes);
+  const name=TYPE_NAMES[r.coreType]?.[getLocale()==='en'?1:0];
   const pending=r.axes.flatMap((a,i)=>a.status==='scored'?[]:[tx`<li>${esc(tx(AXES[i].name))} ${AXES[i].left}／${AXES[i].right}：${a.status==='insufficient'?tx`有效 ${a.validCount}／${a.questionCount} 題，資料不足`:tx('50／50，同分')}</li>`]).join('');
+  if(r.profile64Id)return tx`<h1 class="result-code">${esc(r.publicResult)}</h1><p class="result-name">${esc(name)}</p><p class="result-summary">這是你在本次日常情境中的偏好組合。</p>`;
   if(r.insufficientAxes.length)return tx`<h1 class="result-code">資料尚不足</h1><p class="result-summary">有 ${6-r.insufficientAxes.length} 個面向達到作答門檻；補足以下面向的有效回答後，才能列出完整型態候選。</p><ul class="result-pending">${pending}</ul>`;
   const candidates=candidateCodes(r);
   return tx`<h1 class="result-code result-candidate-heading">最接近的型態</h1><p class="result-candidate-count">${candidates.length} 種同分候選</p><p class="result-summary">${6-r.undecidedAxes.length} 個面向已有傾向，${r.undecidedAxes.length} 個仍是 50／50。以下型態在本次計分下同分，沒有先後排名。</p><div class="candidate-grid">${candidates.slice(0,4).map(candidateCard).join('')}</div>${candidates.length>4?tx`<details class="candidate-more"><summary>查看其餘 ${candidates.length-4} 種同分候選</summary><div class="candidate-grid">${candidates.slice(4).map(candidateCard).join('')}</div></details>`:''}<ul class="result-pending" aria-label="同分原因">${pending}</ul>`;
+}
+function scenarioReflectionView(example,reflection){
+ const axis=example.axis;
+ const savedFit=reflection?.pole===example.pole?reflection.fit:'';
+ const options=[['','尚未選擇'],['like','這像我'],['depends','要看情況'],['different','我會用別的方式']];
+ const fit=example.pole?tx`<label for="scenario-fit-${axis}">這個傾向像你平常的做法嗎？</label><select id="scenario-fit-${axis}" name="fit">${options.map(([value,label])=>`<option value="${value}" ${savedFit===value?'selected':''}>${esc(tx(label))}</option>`).join('')}</select>`:'';
+ return tx`<details class="scenario-reflection"><summary>留下自己的回想（選填）</summary>
+   <form id="scenario-${axis}" data-scenario-axis="${axis}" data-scenario-pole="${example.pole||''}">${fit}
+     <label for="scenario-note-${axis}">我的生活例子（選填）</label>
+     <textarea id="scenario-note-${axis}" name="note" rows="3" maxlength="${SCENARIO_NOTE_LIMIT}">${esc(reflection?.note)}</textarea>
+     <button type="submit" class="button">儲存在此瀏覽器</button>
+     <p class="scenario-save-status" role="status"></p>
+   </form></details>`;
+}
+function dailyScenariosView(axes,reflections){
+ const scenarios=getDailyScenarios(axes,getLocale(),Object.keys(reflections));
+ const cards=scenarios.map(example=>{
+  const axis=AXES.find(a=>a.key===example.axis);
+  const area=example.pole?esc(tx(axis.name)+' · '+preferenceName(axis,example.pole)):esc(tx(axis.name));
+  return `<article class="daily-scenario"><p class="daily-scenario-axis">${area}</p><h2>${esc(example.title)}</h2><p>${esc(example.text)}</p>${scenarioReflectionView(example,reflections[axis.key])}</article>`;
+ }).join('');
+ return tx`<details class="result-disclosure daily-scenarios" id="daily-scenarios"><summary>日常情境回想</summary>
+   <p class="result-guide">回想最近一次遇到類似情況時，你做了什麼。儲存的回想只留在此瀏覽器，測驗分數依題目回答計算。</p>
+   <div class="daily-scenario-grid">${cards}</div></details>`;
 }
 export function resultInsightsView(r){
  const copy=RESULT_IMAGE_COPY[getLocale()],insights=getResultInsights(r,getLocale());
  const list=(items,empty)=>items.length?`<ul>${items.map(item=>`<li><strong>${esc(item.pole)}</strong><span>${esc(item.text)}</span></li>`).join('')}</ul>`:`<p>${esc(empty)}</p>`;
  return `<details class="result-disclosure" id="result-insights"><summary>${esc(copy.observations)}</summary><p class="result-guide">${esc(copy.basis)}</p><div class="result-insight-grid"><section><h2>${esc(copy.strengths)}</h2>${list(insights.strengths,insights.noStrengths)}</section><section><h2>${esc(copy.cautions)}</h2>${list(insights.cautions,insights.noCautions)}</section></div></details>`;
 }
-export function resultView(r,previous,draft,readOnly=false) {
+export function resultView(r,previous,draft,readOnly=false,reflections={}) {
   const current=r.snapshots.at(-1), feedback=current.feedback;
   const intro=resultIntro(r);
   const pending=draft?.attemptId===r.attemptId;
@@ -72,7 +146,7 @@ export function resultView(r,previous,draft,readOnly=false) {
   let comparison='';
   if(previous){const c=compareResults(previous,r);comparison=c.comparable?tx`<section class="result-section"><h2>24 題主測驗比較</h2><p>相隔 ${c.days<1?tx('不到 1 天'):tx`${c.days.toFixed(1)} 天`}。只比較同題本、兩次都完整回答主測驗四題的面向，不混入後續補題或不計分回答。${c.days<7?tx('間隔較短，不作為長期穩定性的證據。'):''}</p><div class="compare-wrap"><table class="compare-table"><thead><tr><th scope="col">軸</th><th scope="col">上次左側</th><th scope="col">這次左側</th><th scope="col">變動</th></tr></thead><tbody>${c.axes.map((a,i)=>tx`<tr><th scope="row">${tx(AXES[i].name)}</th><td>${a.comparable?a.previous+'%':'—'}</td><td>${a.comparable?a.current+'%':'—'}</td><td>${!a.comparable?tx('未比較（含不計分回答）'):(a.delta>0?'+':'')+a.delta+tx(' 百分點')}</td></tr>`).join('')}</tbody></table></div></section>`:tx`<p class="local-note">${esc(tx(c.reason))}</p>`;}
   return tx`<section class="result-page"><header class="result-head result-hero"><p class="eyebrow">這次的探索結果 · ${r.questionCount} 題</p>${intro}<p class="result-date">${date(r.completedAt)} · ${tx(stateNames[r.state])}</p><div class="actions result-main-actions"><button class="button primary" data-action="save-result-image">${esc(RESULT_IMAGE_COPY[getLocale()].save)}</button><button class="button" data-action="open-archive">私人存檔與找回</button><button class="button" data-action="export-json">下載結果</button><button class="button text" data-action="retest">再測一次</button></div><p id="result-image-status" class="download-note" role="status"></p></header>
-    ${resultInsightsView(r)}<details class="result-disclosure" id="result-detail"><summary>查看六個面向與詳細解讀</summary><p class="result-guide">百分比是本次回答的計分比例，並非類型機率或準確率。「未定」與「資料不足」分開呈現，不計分回答不加入分母。</p>
+    ${dailyScenariosView(r.axes,reflections)}${resultInsightsView(r)}<details class="result-disclosure" id="result-detail"><summary>查看六個面向與詳細解讀</summary><p class="result-guide">百分比是本次回答的計分比例，並非類型機率或準確率。「未定」與「資料不足」分開呈現，不計分回答不加入分母。</p>
     <div class="axes">${r.axes.map((a,i)=>axisView(a,AXES[i])).join('')}</div>
     ${detailsView(r)}</details>${continuation}
     <details class="result-disclosure"><summary>回饋這次結果</summary><section class="result-section panel"><p class="section-label">留下你的感受</p><h2>這個解讀，像你嗎？</h2><p>這份回饋對應 ${r.questionCount} 題結果；後續補題會另收回饋，先前紀錄仍保留。未填也能看結果及下載。</p>

@@ -1,8 +1,13 @@
 import {AXES,TYPE_NAMES} from './data.mjs';
+import {isPreliminaryStage} from './core.mjs';
 export const RESULT_IMAGE_VERSION='result-image-1.0';
 export const RESULT_IMAGE_COPY={
  zh:{brand:'獵魔士熊貓64型',eyebrow:'這次的探索',strengths:'你可能擅長的事',cautions:'可以留意的地方',basis:'依本次方向較清楚的面向，挑選最多三則觀察。',noStrengths:'目前沒有作答足夠且方向清楚的面向，先不挑選單側特點。',noCautions:'可先從具體生活例子觀察，不必急著固定自己的型態。',insufficient:'資料尚不足',tied:'種同分候選',tieNote:'這些候選在本次計分下同分，沒有先後排名。',missingNote:'回答不足的面向保留空白，不當作 50／50。',snapshot:'這是一張本次作答的快照，保留繼續了解自己的空間。',footer:'供娛樂與自我探索參考；分數不是類型機率。',save:'一鍵儲存結果圖',creating:'正在製作結果圖…',preview:'你的結果圖',close:'關閉',download:'下載 PNG 圖片',hint:'結果圖已產生，並已送出下載請求；請確認瀏覽器下載項目。也可長按或按右鍵儲存預覽圖片。',privacy:'圖片只包含型態、面向分數與優勢提醒，不含找回碼、逐題答案或補充原文。',failed:'結果圖尚未產生。請稍後重試，原本的測驗結果仍保留。',imageAlt:'測驗結果分享圖',valid:'有效',skipped:'不計分',notEnough:'資料不足',balanced:'兩側接近',observations:'看看你的優勢與提醒'},
  en:{brand:'Demonward Panda 64',eyebrow:'Your exploration',strengths:'Your possible strengths',cautions:'Things to keep in mind',basis:'Up to three observations from areas with a clearer direction in this result.',noStrengths:'No area has both enough answers and a clear enough direction yet, so no one-sided traits are picked.',noCautions:'Notice what you do in real situations. There is no rush to settle on one fixed type.',insufficient:'Not enough answers yet',tied:'equally scored possibilities',tieNote:'These possibilities have equal scores here. They are not ranked.',missingNote:'Areas with too few answers stay blank; they are not counted as 50/50.',snapshot:'A snapshot of your preferences, with room to keep exploring.',footer:'For fun and self-reflection. Scores are not type probabilities.',save:'Save result image',creating:'Making your result image…',preview:'Your result image',close:'Close',download:'Download PNG',hint:'Your image is ready and a download has been requested. Check your browser downloads, or press and hold / right-click the preview to save it.',privacy:'The image includes your type, area scores, and observations. It leaves out recovery codes, individual responses, and your own notes.',failed:'We could not make the image just now. Try again shortly; your quiz result is still here.',imageAlt:'Shareable quiz result image',valid:'Scored',skipped:'Skipped',notEnough:'Too few answers',balanced:'Both sides close',observations:'Explore your strengths and watch-outs'}
+};
+export const PRELIMINARY_IMAGE_COPY={
+ zh:{title:'目前的作答傾向',note:'分數反映這一階段的回答，供自我探索與對話參考。'},
+ en:{title:'Your responses so far',note:'These scores reflect the answers you gave in this section.'},
 };
 // These describe possible uses and trade-offs of a preference, not fixed ability
 // or a diagnosis. Both languages follow the same evidence-selection rule.
@@ -21,11 +26,55 @@ const TRAIT_COPY={
  C:{zh:['透過實際幫忙表達重視，可能較能提供具體的支持。','加上一兩句說明，讓別人更容易看懂你行動背後的心意。'],en:['Practical help may let you show care in a concrete, useful way.','A few words can help others understand the care behind what you are doing.']}
 };
 const IMAGE_AXIS_NAMES={EI:['互動／獨處','Company / Time alone'],SN:['例子／概念','Examples / Ideas'],TF:['條件／價值','Criteria / Values'],JP:['先定／邊定','Plan / Adapt'],AO:['先試／先看','Try / Learn first'],HC:['話語／行動','Words / Actions']};
-export function getResultInsights(record,locale='zh'){
- const language=locale==='en'?'en':'zh',copy=RESULT_IMAGE_COPY[language];
- const selected=AXES.map((axis,index)=>({axis:axis.key,index,value:record.axes.find(a=>a.key===axis.key)}))
+const DAILY_SCENARIOS={
+ EI:{
+  zh:['忙完一天回到家時','想想最近一次過完忙碌的一天。你回到家後先做了什麼？什麼讓你比較有精神，或比較能整理想法？'],
+  en:['Getting home after a busy day','Think about the last time you came home after a busy day. What did you do first? What helped you recharge or sort through your thoughts?'],
+ },
+ SN:{
+  zh:['朋友推薦一個新地方時','上次朋友推薦一個你沒去過的地方，你最先想知道什麼？你是怎麼想像那個地方的？'],
+  en:['A friend recommends somewhere new','The last time a friend recommended somewhere new, what did you want to know first? How did you picture the place?'],
+ },
+ TF:{
+  zh:['和朋友一起挑餐廳時','回想上次你和朋友一起選餐廳。你是怎麼決定的？如果同行的人換了，你會在意不同的事嗎？'],
+  en:['Choosing a restaurant with friends','Think of the last time you chose a restaurant with friends. How did you decide? Would different people change what mattered to you?'],
+ },
+ JP:{
+  zh:['原訂行程遇到下雨時','上次和朋友出門遇到下雨，或行程臨時變動時，你怎麼決定下一步？當時最先考慮的是什麼？'],
+  en:['Rain changes your plans','Think of the last time rain or another surprise changed your plans. How did you decide what to do next? What did you consider first?'],
+ },
+ AO:{
+  zh:['第一次用新的筆記工具時','想想上次開始用一個新工具。你是從哪一步開始的？如果操作可以輕鬆復原，你的做法會不同嗎？'],
+  en:['Using a new notes app','Think back to the last time you tried a new tool. Where did you start? Would you start differently if it were easy to undo your changes?'],
+ },
+ HC:{
+  zh:['朋友事情忙不完時','上次發現朋友事情忙不完時，你怎麼表達關心？你怎麼知道對方當時需要什麼？'],
+  en:['A friend has too much to do','The last time a friend seemed overwhelmed, how did you show that you cared? How did you find out what they needed?'],
+ },
+};
+function selectClearAreas(axes){
+ return AXES.map((axis,index)=>({axis:axis.key,index,value:axes.find(a=>a.key===axis.key)}))
   .filter(({value:a})=>a?.status==='scored'&&!a.nearMidpoint&&a.validCount>=a.minValidCount&&a.gap>10&&TRAIT_COPY[a.pole])
   .sort((a,b)=>b.value.gap-a.value.gap||a.index-b.index).slice(0,3);
+}
+export function getResponseTendencies(axes){
+ return selectClearAreas(axes).map(({axis,value})=>({axis,pole:value.pole}));
+}
+export function getDailyScenarios(axes,locale='zh',savedAxes=[]){
+ const language=locale==='en'?'en':'zh';
+ const tendencies=getResponseTendencies(axes);
+ const selected=new Set(tendencies.map(item=>item.axis));
+ const saved=savedAxes.filter(axis=>Object.hasOwn(DAILY_SCENARIOS,axis)&&!selected.has(axis)).map(axis=>({axis,pole:null}));
+ const sources=[...tendencies,...saved];
+ if(!sources.length)sources.push({axis:'JP',pole:null});
+ return sources.map(({axis,pole})=>{
+  const [title,text]=DAILY_SCENARIOS[axis][language];
+  return {axis,pole,title,text};
+ });
+}
+export function getResultInsights(record,locale='zh'){
+ const language=locale==='en'?'en':'zh',copy=RESULT_IMAGE_COPY[language];
+ const selected=selectClearAreas(record.axes);
  const item=(s,i)=>({axis:s.axis,pole:s.value.pole,text:TRAIT_COPY[s.value.pole][language][i]});
  return {strengths:selected.map(s=>item(s,0)),cautions:selected.map(s=>item(s,1)),basis:copy.basis,noStrengths:copy.noStrengths,noCautions:copy.noCautions};
 }
@@ -36,8 +85,10 @@ export function buildResultImageData(record,locale='zh'){
   return {key:axis.key,name:IMAGE_AXIS_NAMES[axis.key][language==='en'?1:0],left:axis.left,right:axis.right,pole:a.pole,status:a.status,leftPercent:a.status==='insufficient'?null:a.leftPercent,rightPercent:a.status==='insufficient'?null:a.rightPercent};
  });
  const missing=axes.some(a=>a.status==='insufficient');
- const allCandidates=missing?[]:axes.reduce((codes,a,i)=>codes.flatMap(code=>(a.status==='balanced'?[a.left,a.right]:[a.pole]).map(pole=>code+(i===4?'-':'')+pole)),['']);
- const kind=missing?'insufficient':allCandidates.length>1?'tied':'typed';
- const title=kind==='typed'?allCandidates[0]:kind==='insufficient'?copy.insufficient:language==='en'?`${allCandidates.length} possible types`:`${allCandidates.length} 種同分候選`;
+ const preliminary=isPreliminaryStage(record);
+ const allCandidates=missing||preliminary?[]:axes.reduce((codes,a,i)=>codes.flatMap(code=>(a.status==='balanced'?[a.left,a.right]:[a.pole]).map(pole=>code+(i===4?'-':'')+pole)),['']);
+ const kind=preliminary?'preliminary':missing?'insufficient':allCandidates.length>1?'tied':'typed';
+ const title=preliminary?PRELIMINARY_IMAGE_COPY[language].title
+  :kind==='typed'?allCandidates[0]:kind==='insufficient'?copy.insufficient:language==='en'?`${allCandidates.length} possible types`:`${allCandidates.length} 種同分候選`;
  return {version:RESULT_IMAGE_VERSION,locale:language,kind,title,name:kind==='typed'?(TYPE_NAMES[title.slice(0,4)]?.[language==='en'?1:0]||''):'',questionCount:record.questionCount,candidateCount:allCandidates.length,candidates:kind==='tied'?allCandidates.slice(0,4):[],axes,...getResultInsights(record,language),scoredCount:record.axes.reduce((n,a)=>n+a.validCount,0),skippedCount:record.axes.reduce((n,a)=>n+a.skippedCount,0)};
 }

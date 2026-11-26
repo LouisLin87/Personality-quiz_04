@@ -6,9 +6,9 @@ import {AppsScriptTransport} from './apps-script-transport.mjs';
 import {DRIVE_ARCHIVE_CONFIG} from './config.mjs';
 import {createQuestionOrder} from './presentation.mjs';
 import { AXES, QUESTIONNAIRE_VERSION, SCHEMA_VERSION } from './data.mjs';
-import { evaluate, advanceResult, presentedQuestions, exportRecord, toCSV, isAnswer, FEEDBACK_REASONS } from './core.mjs';
-import { loadState, saveState, clearState } from './storage.mjs';
-import { esc, date, stateNames, homeView, quizView, completionView, resultView } from './views.mjs';
+import { evaluate, advanceResult, presentedQuestions, exportRecord, toCSV, isAnswer, FEEDBACK_REASONS, scoreAxes, EARLY_RESULT_QUESTION_COUNT } from './core.mjs';
+import { loadState, saveState, clearState, normalizeScenarioReflection } from './storage.mjs';
+import { esc, date, stateNames, homeView, quizView, preliminaryView, completionView, resultView } from './views.mjs';
 import { ArchiveClient } from './archive-client.mjs';
 import {SupplementUI} from './supplement-ui.mjs';
 import {UIClickSound} from './click-sound.mjs';
@@ -54,11 +54,26 @@ function renderQuiz(){
   const d=state.draft;if(!d)return renderHome();const questions=presentedQuestions(d.phase,d.answers,d.orderPool),start=draftStart(d),q=questions[d.index];
   screen(quizView(d,questions,start,notes.mountQuestion(q,d.attemptId)),'quiz');
 }
+function renderPreliminary(){
+  const d=state.draft,questions=presentedQuestions(d.phase,d.answers,d.orderPool).slice(0,EARLY_RESULT_QUESTION_COUNT);
+  screen(preliminaryView(scoreAxes(questions,d.answers),state.scenarioReflections?.[d.attemptId]),'preliminary');
+}
+function showLetterReason(id){
+  for(const letter of app.querySelectorAll('[data-action="explain-letter"]')){
+    const expanded=letter.id===id;
+    letter.setAttribute('aria-expanded',String(expanded));
+    document.getElementById(letter.getAttribute('aria-controls')).hidden=!expanded;
+  }
+}
 function nextQuestion(){
   const d=state.draft,questions=presentedQuestions(d.phase,d.answers,d.orderPool),q=questions[d.index];
   if(!isAnswer(d.answers[q.id])){document.querySelector('#question-error').hidden=false;app.querySelector('input[name="answer"]').focus();return;}
   if(!notes.saveBeforeNext(q.id,d.attemptId))return;
-  if(d.index<questions.length-1){d.index++;persist();renderQuiz();return;}
+  if(d.index<questions.length-1){
+    d.index++;persist();
+    if(d.index===EARLY_RESULT_QUESTION_COUNT)renderPreliminary();else renderQuiz();
+    return;
+  }
   const now=new Date().toISOString();
   let r=d.phase==='base'?evaluate(d.answers,{...d,stage:'base',completedAt:now}):advanceResult(findResult(d.attemptId),d.answers,d.phase,now);
   replaceResult(r);state.draft=null;
@@ -70,10 +85,10 @@ function nextQuestion(){
 }
 function renderTieIntro(r){
   activeResultId=r.attemptId;
-  screen(tx`<section class="narrow panel chapter-intro"><p class="eyebrow">24 題已保存</p><h1>有 ${r.tiedAxes.length} 個軸，兩側同樣常見。</h1><p class="lead">24 題初步結果已保存。接著只為 50／50 的軸各補兩題，共 ${r.tiedAxes.length*2} 題。</p><p>${r.tiedAxes.map(k=>{const a=AXES.find(a=>a.key===k);return tx`${a.left}/${a.right} ${tx(a.name)}`;}).join('、')}</p><p>只補這一輪，仍平手就保留未定。</p><div class="actions"><button class="button primary" data-action="resume">開始 ${r.tiedAxes.length*2} 題平手補題</button><button class="button" data-action="peek-result">先看 24 題初步結果</button></div></section>`,'tie-intro');
+  screen(tx`<section class="narrow panel chapter-intro"><p class="eyebrow">24 題已保存</p><h1>有 ${r.tiedAxes.length} 個軸，兩側同樣常見。</h1><p class="lead">24 題初步結果已保存。接著只為 50／50 的軸各補兩題，共 ${r.tiedAxes.length*2} 題。</p><p>${r.tiedAxes.map(k=>{const a=AXES.find(a=>a.key===k);return tx`${a.left}/${a.right} ${tx(a.name)}`;}).join('、')}</p><p>只補這一輪。仍同分時，結果會顯示兩側得分相同。</p><div class="actions"><button class="button primary" data-action="resume">開始 ${r.tiedAxes.length*2} 題平手補題</button><button class="button" data-action="peek-result">先看 24 題初步結果</button></div></section>`,'tie-intro');
 }
-function renderCompletion(id){const r=findResult(id);if(!r)return renderHome();activeResultId=id;screen(completionView(r)+archive.statusHTML(),'completion');}
-function renderResult(id){const r=findResult(id);if(!r)return renderHome();activeResultId=id;screen(resultView(r,findResult(r.baselineAttemptId),state.draft,!r.responses)+tx('<details class="result-disclosure"><summary>查看或補充自己的想法</summary><section id="supplement-root" class="result-section"></section></details><details class="result-disclosure" id="result-archive"><summary>儲存與找回 Google 紀錄</summary><section id="archive-panel" class="archive-panel"></section></details>')+archive.statusHTML(),'result');notes.mountResult(id);archive.render();if(!r.responses){for(const control of app.querySelectorAll('#feedback-form input,#feedback-form button'))control.disabled=true;document.querySelector('#feedback-status').textContent=tx('這是歷史回饋，僅供查看。');}}
+function renderCompletion(id){const r=findResult(id);if(!r)return renderHome();activeResultId=id;screen(completionView(r,state.scenarioReflections?.[id])+archive.statusHTML(),'completion');}
+function renderResult(id){const r=findResult(id);if(!r)return renderHome();activeResultId=id;screen(resultView(r,findResult(r.baselineAttemptId),state.draft,!r.responses,state.scenarioReflections?.[id])+tx('<details class="result-disclosure"><summary>查看或補充自己的想法</summary><section id="supplement-root" class="result-section"></section></details><details class="result-disclosure" id="result-archive"><summary>儲存與找回 Google 紀錄</summary><section id="archive-panel" class="archive-panel"></section></details>')+archive.statusHTML(),'result');notes.mountResult(id);archive.render();if(!r.responses){for(const control of app.querySelectorAll('#feedback-form input,#feedback-form button'))control.disabled=true;document.querySelector('#feedback-status').textContent=tx('這是歷史回饋，僅供查看。');}}
 function startNext(phase){
   const r=findResult(activeResultId);if(!r||r.stage!==(phase==='short'?'base':'short'))return;
   if(state.draft?.attemptId===r.attemptId){renderQuiz();return;}
@@ -105,13 +120,40 @@ async function download(kind,all=false){
     const anchor=document.createElement('a');anchor.href=url;anchor.download=tx`demonward-panda-self-explorer-v4-${all?'all':records[0].attemptId.slice(0,8)}.${kind}`;document.body.append(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);announce(tx('已準備下載紀錄，請確認瀏覽器下載項目。'));
   }catch{warn(tx('無法產生下載檔，請使用本機 HTTP 網址開啟，或檢查瀏覽器是否允許下載。'));}
 }
-app.addEventListener('submit',event=>{event.preventDefault();const form=new FormData(event.target);if(event.target.id==='setup-form'){form.set('completionConsent',event.submitter?.value==='yes'?'yes':'no');begin(form);}if(event.target.id==='question-form')nextQuestion();if(event.target.id==='feedback-form')saveFeedback(form);});
+function saveScenarioReflection(form,fields){
+  const id=app.dataset.screen==='preliminary'?state.draft?.attemptId:activeResultId;
+  const axis=AXES.find(a=>a.key===form.dataset.scenarioAxis);
+  if(!id||!axis)return;
+  const reflections={...state.scenarioReflections?.[id]},status=form.querySelector('.scenario-save-status');
+  const reflection=normalizeScenarioReflection({fit:fields.get('fit')??'',pole:form.dataset.scenarioPole,note:fields.get('note')},axis);
+  if(!reflection){status.textContent=tx('請確認選項與文字長度。');return;}
+  const hasContent=Boolean(reflection.fit||reflection.note);
+  if(hasContent)reflections[axis.key]=reflection;else delete reflections[axis.key];
+  const scenarioReflections={...state.scenarioReflections};
+  if(Object.keys(reflections).length)scenarioReflections[id]=reflections;else delete scenarioReflections[id];
+  const next={...state,scenarioReflections};
+  if(!saveState(storage,next)){status.textContent=tx('這次未能儲存，請再試一次。');return;}
+  state=next;
+  status.textContent=hasContent?tx('已儲存在此瀏覽器。'):tx('已清除此回想。');
+}
+app.addEventListener('submit',event=>{
+  event.preventDefault();
+  const form=new FormData(event.target);
+  if(event.target.id==='setup-form'){form.set('completionConsent',event.submitter?.value==='yes'?'yes':'no');begin(form);}
+  if(event.target.id==='question-form')nextQuestion();
+  if(event.target.id==='feedback-form')saveFeedback(form);
+  if(event.target.matches('[data-scenario-axis]'))saveScenarioReflection(event.target,form);
+});
 app.addEventListener('change',event=>{
   if(event.target.name==='answer'&&state.draft){const q=presentedQuestions(state.draft.phase,state.draft.answers,state.draft.orderPool)[state.draft.index];state.draft.answers[q.id]=event.target.value==='skip'?'skip':Number(event.target.value);persist();document.querySelector('#question-error').hidden=true;}
   if(event.target.name==='fit')document.querySelector('#feedback-details').hidden=event.target.value==='yes';
 });
 app.addEventListener('click',event=>{
   const button=event.target.closest('[data-action]');if(!button)return;const action=button.dataset.action;
+  if(action==='explain-letter'){
+    showLetterReason(button.getAttribute('aria-expanded')==='true'?null:button.id);
+    return;
+  }
   if(action==='save-result-image'){
     const record=findResult(activeResultId),locale=getLocale(),copy=RESULT_IMAGE_COPY[locale];if(!record||button.disabled)return;
     const status=document.querySelector('#result-image-status');button.disabled=true;button.setAttribute('aria-busy','true');if(status)status.textContent=copy.creating;
@@ -136,14 +178,17 @@ app.addEventListener('click',event=>{
 document.querySelector('#language-controls').addEventListener('click',event=>{
   const button=event.target.closest('[data-locale]');if(!button||button.dataset.locale===getLocale())return;
   const snapshot=captureFormState(app),screenName=app.dataset.screen,scrollY=window.scrollY;
+  const openLetter=app.querySelector('[data-action="explain-letter"][aria-expanded="true"]')?.id;
   const noteForm=app.querySelector('#supplement-form');if(noteForm)notes.capture(noteForm);
   setLocale(button.dataset.locale,storage);applyDocumentLanguage();sound.update();
   archive.message='';notes.message='';
   if(screenName==='quiz')renderQuiz();else if(screenName==='setup')renderSetup(pendingBaselineId);
+  else if(screenName==='preliminary')renderPreliminary();
   else if(screenName==='tie-intro')renderTieIntro(findResult(activeResultId));
   else if(screenName==='completion')renderCompletion(activeResultId);
   else if(screenName==='result')renderResult(activeResultId);else renderHome();
-  restoreFormState(app,snapshot);window.scrollTo({top:scrollY,behavior:'instant'});button.focus({preventScroll:true});
+  restoreFormState(app,snapshot);if(openLetter)showLetterReason(openLetter);
+  window.scrollTo({top:scrollY,behavior:'instant'});button.focus({preventScroll:true});
   const url=new URL(window.location.href);if(url.searchParams.has('lang')){url.searchParams.set('lang',getLocale());window.history.replaceState(null,'',url);}
   announce(getLocale()==='en'?'Language changed to English. Your progress is still here.':'已切換為中文，作答進度已保留。');
 });

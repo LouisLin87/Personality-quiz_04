@@ -2,6 +2,7 @@ import {PRESENTATION_VERSION,canonicalQuestionPool,validateOrderPool,orderedQues
 import { AXES, BASE_QUESTIONS, EXTENDED_QUESTIONS, FOLLOWUP_QUESTIONS, QUESTIONNAIRE_VERSION, LEGACY_QUESTIONNAIRE_VERSION, LEGACY_ITEM_VERSIONS, SCORING_VERSION, SCHEMA_VERSION } from './data.mjs';
 
 export const STAGES = ['base', 'short', 'full'];
+export const EARLY_RESULT_QUESTION_COUNT = 30;
 export const ALL_QUESTIONS = [...BASE_QUESTIONS, ...EXTENDED_QUESTIONS, ...FOLLOWUP_QUESTIONS];
 export const SKIP_ANSWER='skip';
 export const isAnswer = value => value===SKIP_ANSWER || (Number.isInteger(value) && [-1, 0, 1].includes(value));
@@ -33,6 +34,9 @@ export function scoreAxes(questions, answers) {
     }
     return axisScore(axis,items.length,left,neutral,skipped);
   });
+}
+export function isPreliminaryStage(record) {
+  return record.stage==='short'&&record.questionCount>=EARLY_RESULT_QUESTION_COUNT;
 }
 export function tieAxes(answers) {
   return scoreAxes(BASE_QUESTIONS,answers).filter(a=>a.status==='balanced').map(a=>a.key);

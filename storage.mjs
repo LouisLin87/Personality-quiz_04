@@ -1,8 +1,15 @@
 import {validateOrderPool} from './presentation.mjs';
-import { QUESTIONNAIRE_VERSION } from './data.mjs';
+import { AXES, QUESTIONNAIRE_VERSION } from './data.mjs';
 import { ALL_QUESTIONS, presentedQuestions, validateRecord, isAnswer } from './core.mjs';
 import {validateSupplementDocument} from './supplement-core.mjs';
 export const STORAGE_KEY = 'demonward_panda_v4_wording_94_local';
+export const SCENARIO_NOTE_LIMIT=160;
+const scenarioFits=['','like','depends','different'];
+export function normalizeScenarioReflection(value,axis) {
+  if(!scenarioFits.includes(value?.fit)||typeof value.note!=='string'||value.note.length>SCENARIO_NOTE_LIMIT)return null;
+  if(value.fit&&value.pole!==axis.left&&value.pole!==axis.right)return null;
+  return {fit:value.fit,pole:value.fit?value.pole:null,note:value.note.trim()};
+}
 const validStorageId = value => typeof value==='string' && /^[a-zA-Z0-9-]{1,80}$/.test(value);
 function validDraft(d,attempts) {
   try {
@@ -22,14 +29,14 @@ function validDraft(d,attempts) {
   } catch { return false; }
 }
 export function loadState(storage) {
-  const empty={participantId:null,draft:null,attempts:[],supplements:{},supplementDrafts:{},supplementBaseRevisions:{}};
+  const empty={participantId:null,draft:null,attempts:[],supplements:{},supplementDrafts:{},supplementBaseRevisions:{},scenarioReflections:{}};
   try {
     const raw=storage.getItem(STORAGE_KEY);if(!raw)return{state:empty,warning:''};
     const saved=JSON.parse(raw);if(!saved||!Array.isArray(saved.attempts))throw Error('Invalid state');
     const attempts=saved.attempts.filter(r=>r.questionnaireVersion===QUESTIONNAIRE_VERSION&&validateRecord(r,true));
     let draft=saved.draft||null,warning=attempts.length===saved.attempts.length?'':'部分本機紀錄格式不完整，已略過顯示。';
     if(!validDraft(draft,attempts)){draft=null;warning='上次未完成進度與目前題本不相容；有效的已完成結果仍保留。';}
-    const supplements={},supplementDrafts={},supplementBaseRevisions={};
+    const supplements={},supplementDrafts={},supplementBaseRevisions={},scenarioReflections={};
     const known=id=>attempts.find(r=>r.attemptId===id)||(draft?.attemptId===id?draft:null);
     for(const[id,doc]of Object.entries(saved.supplements||{})){
       const owner=known(id);if(validStorageId(id)&&doc?.attemptId===id&&validateSupplementDocument(doc,draft?.attemptId===id?null:owner?.stage?owner:null))supplements[id]=doc;else warning='部分補充文字格式不完整，未載入；有效測驗結果仍保留。';
@@ -41,7 +48,16 @@ export function loadState(storage) {
       supplementDrafts[id]=clean;
     }
     for(const[id,revision]of Object.entries(saved.supplementBaseRevisions||{}))if(validStorageId(id)&&(known(id)||supplements[id]||supplementDrafts[id])&&Number.isInteger(revision)&&revision>=0)supplementBaseRevisions[id]=revision;
-    return{state:{participantId:validStorageId(saved.participantId)?saved.participantId:null,draft,attempts,supplements,supplementDrafts,supplementBaseRevisions},warning};
+    for(const[id,entries]of Object.entries(saved.scenarioReflections||{})){
+      if(!validStorageId(id)||!entries||typeof entries!=='object'||Array.isArray(entries))continue;
+      const clean={};
+      for(const axis of AXES){
+        const reflection=normalizeScenarioReflection(entries[axis.key],axis);
+        if(reflection&&(reflection.fit||reflection.note))clean[axis.key]=reflection;
+      }
+      if(Object.keys(clean).length)scenarioReflections[id]=clean;
+    }
+    return{state:{participantId:validStorageId(saved.participantId)?saved.participantId:null,draft,attempts,supplements,supplementDrafts,supplementBaseRevisions,scenarioReflections},warning};
   }catch{return{state:empty,warning:'無法讀取本機進度。仍可作答，完成後請下載紀錄；瀏覽器需允許網站儲存才能續答。'};}
 }
 export function saveState(storage,state) {
