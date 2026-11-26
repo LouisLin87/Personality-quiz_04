@@ -13,7 +13,8 @@ export class CompletionStatistics{
     }}catch{this.persisted=false;}
   }
   persist(){try{this.storage.setItem(COMPLETION_STATS_KEY,JSON.stringify(this.entries));this.persisted=true;}catch{this.persisted=false;}this.onChange();}
-  authorize(id){if(!this.entries[id]){this.entries[id]={consentAt:this.now(),items:{}};this.persist();}}
+  hasConsent(id){return Object.hasOwn(this.entries,id);}
+  authorize(id){if(!this.hasConsent(id)){this.entries[id]={consentAt:this.now(),items:{}};this.persist();}}
   enqueue(record){
     const entry=this.entries[record.attemptId];if(!entry||!validateRecord(record))return;
     if(entry.items[record.stage])return;

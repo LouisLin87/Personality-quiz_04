@@ -4,7 +4,7 @@
 
 Save result image creates a PNG on your device without a new cloud request. It includes your type or tied/insufficient status, six area scores, question count, and observations. It excludes recovery codes, credentials, exact completion times, individual responses, and your own notes. Check that you want to share the displayed type and scores before posting the downloaded image. Preview object URLs remain on this page and are released after closing.
 
-You can take the quiz without signing in. Choose **Start with local saving only** if you want your answers and results to stay in this browser. The Chinese and English interfaces use the same scoring rules. Switching language changes the displayed wording, not your answers or scores.
+You can take the quiz without signing in after agreeing to save completion summaries to Google. The Chinese and English interfaces use the same scoring rules. Switching languages keeps your answers and scores.
 
 ## What stays in this browser
 
@@ -12,11 +12,11 @@ Your question order, progress, completed results, saved notes, and unfinished no
 
 Choosing Next saves the current note. Collapsing the note field keeps its text; clearing it and choosing Next removes that local note. Sound is bundled with the site and doesn't record audio or contact its original asset source.
 
-Everyday reflection choices and examples are saved only in this browser when you choose to save them. To remove a reflection, clear its fields and save again, or clear this edition's local data. Scores and downloads continue to use the quiz record.
+Everyday reflection prompts are available with your results. To save an example, sign in to a private Google archive and give separate consent to save the note. Previously saved reflections remain available in their original browser and can be removed by clearing this edition's local data.
 
-## Automatic completion summaries: a separate choice
+## Automatic completion summaries
 
-If you choose **Agree to automatic summaries and start**, each completed section sends a summary to the owner's private Google spreadsheet. A private archive or recovery code is not required for this summary.
+Choose **Agree to save summaries and start** before beginning. If an older quiz was started without that consent, the site asks before it resumes. Each completed section sends a summary to the owner's private Google spreadsheet without requiring a recovery code.
 
 The summary includes a quiz ID, dates, section, question count, six area scores and answer-coverage status, possible types, versions, question order, life context, and consent time. It excludes your name, email, individual answers, and note text. It is used for quiz statistics and improvements.
 

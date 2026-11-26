@@ -48,6 +48,8 @@ body:has(#app[data-screen="quiz"]) .site-header{padding-top:14px;padding-bottom:
 @media(max-width:359px){.notebook-cover{padding:16px;gap:12px}.hero-art{max-width:72px}.hero-art img{width:72px;height:72px}.cover-title{font-size:.95rem;gap:6px}}
 
 .preliminary-letters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+body{-webkit-user-select:none;user-select:none}
+input,textarea,[contenteditable]:not([contenteditable="false"]),#recovery-code{-webkit-user-select:text;user-select:text}
 .preliminary-letter{position:relative;min-inline-size:0;min-block-size:64px;padding:7px 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--sage);font:inherit;cursor:pointer}
 .preliminary-letter strong,.preliminary-letter span{display:block}
 .preliminary-letter strong{font-size:1.05rem}
@@ -68,13 +70,7 @@ body:has(#app[data-screen="quiz"]) .site-header{padding-top:14px;padding-bottom:
 .daily-scenario .daily-scenario-axis{color:var(--muted);font-size:.875rem}
 .scenario-reflection{margin-top:12px;border-top:1px solid var(--line)}
 .scenario-reflection>summary{min-height:44px;padding:10px 0;cursor:pointer;color:var(--sage);font-weight:600}
-.scenario-reflection form{display:grid;gap:8px}
-.scenario-reflection label{font-size:.9rem}
-.scenario-reflection select,.scenario-reflection textarea{width:100%;min-width:0;min-height:44px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--surface);color:var(--ink);font:inherit}
-.scenario-reflection textarea{resize:vertical}
-.scenario-reflection form>.button{justify-self:start;min-height:44px}
-.daily-scenario .scenario-save-status{color:var(--muted);font-size:.85rem}
-.scenario-save-status:empty{display:none}
+.scenario-reflection p{white-space:pre-wrap}
 .completion-save{margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:8px;font-size:.85rem;background:var(--surface)}.completion-save p{margin:0}.completion-save .button{margin-top:12px}.completion-save[data-save-state="saved"]{border-color:var(--accent)}
 :root{--language-selected:var(--accent)}
 .language-controls{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--surface);flex:none}

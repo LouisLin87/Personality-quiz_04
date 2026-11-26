@@ -2,7 +2,6 @@ import {tx,getLocale,questionCopy} from './i18n.mjs';
 import {getDailyScenarios,getResponseTendencies,getResultInsights,RESULT_IMAGE_COPY} from './result-insights.mjs';
 import { AXES, TYPE_NAMES, ANSWER_EXIT } from './data.mjs';
 import { compareResults, FEEDBACK_REASONS, isPreliminaryStage, EARLY_RESULT_QUESTION_COUNT } from './core.mjs';
-import {SCENARIO_NOTE_LIMIT} from './storage.mjs';
 export const esc = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 export const date = value => new Intl.DateTimeFormat(getLocale()==='en'?'en-US':'zh-TW',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Taipei'}).format(new Date(value));
 export const stateNames = {stable:('大致穩定'),some:('有些變動'),major:('明顯變動')};
@@ -35,7 +34,7 @@ export function quizView(d,questions,start,supplementMarkup) {
 export function homeView(state) {
   return tx`<div class="notebook-home"><aside class="notebook-cover"><figure class="hero-art"><img src="./assets/creator-avatar-v2.png" width="340" height="340" alt="獵魔士熊貓守望者，陪你開始這次探索"><figcaption>每次探索，都留下一點自己的樣子。</figcaption></figure><p class="cover-title">自我探索手札 <span>V4</span></p></aside>
     <div class="notebook-pages"><section class="hero" aria-labelledby="home-title"><p class="edition-note">獵魔士熊貓64型：自我探索V4</p><h1 id="home-title">慢慢答，<br><span>看見自己。</span></h1><p class="lead">從日常的小選擇，看看你如何充電、思考與面對生活。先完成一段，再決定要走多遠。</p>
-    <div class="actions home-actions">${state.draft?tx('<button class="button primary" data-action="resume">繼續上次進度 <span aria-hidden="true">→</span></button><button class="button text" data-action="setup">開始新的一次</button>'):tx('<button class="button primary" data-action="setup">開始我的探索 <span aria-hidden="true">→</span></button>')}</div><p class="home-note">不用登入。答案先留在這個瀏覽器。</p></section>
+    <div class="actions home-actions">${state.draft?tx('<button class="button primary" data-action="resume">繼續上次進度 <span aria-hidden="true">→</span></button><button class="button text" data-action="setup">開始新的一次</button>'):tx('<button class="button primary" data-action="setup">開始我的探索 <span aria-hidden="true">→</span></button>')}</div><p class="home-note">測驗免登入，完成後摘要會保存到 Google。</p></section>
     <section class="journey" aria-labelledby="journey-title"><h2 id="journey-title">一段一段，照自己的步調</h2><ol class="journey-list"><li><strong>24 題起步</strong><p>先看看六個面向的偏好。</p></li><li><strong>平手時，再聊兩題</strong><p>只針對資料足夠且 50／50 的面向，各補兩題、只補一輪；前段共 24～36 題。</p></li><li><strong>看結果，或繼續到 60 題</strong><p>前段完成就有紀錄；資料不足的面向會明確標示。想多了解，再接著探索，已答題目不重複。</p></li></ol></section>
     <section class="axis-preview"><h2>從六個角度認識自己</h2><p>沒有哪一側比較好，點開看看兩種日常的樣子。</p>${AXES.map(a=>tx`<details><summary><span>${tx(a.name)}</span><span class="axis-preview-poles">${a.left} / ${a.right}</span></summary><div><p><strong>${tx(a.leftName)}</strong>　${tx(a.leftDescription)}</p><p><strong>${tx(a.rightName)}</strong>　${tx(a.rightDescription)}</p></div></details>`).join('')}</section>
     <details class="privacy-note"><summary>開始前，了解資料與測驗限制</summary><p>題目隨機排列，續答維持本次順序。初步結果會標出同分與有效回答較少的面向。不要求姓名、Email 或裝置指紋。私人存檔經同意後保存摘要；自由補充文字先留本機，須在結果頁另行同意並保存才傳送。</p><p>這是測試題本，計分比例不是類型機率或準確率。A/O、H/C 是本站自訂探索軸。題目多寡與平手與否，不代表已通過心理計量驗證。</p><p><a href="./README.md">版本說明</a> · <a href="./PRIVACY.md">資料說明</a></p></details></div></div>
@@ -109,29 +108,24 @@ function resultIntro(r){
   const candidates=candidateCodes(r);
   return tx`<h1 class="result-code result-candidate-heading">最接近的型態</h1><p class="result-candidate-count">${candidates.length} 種同分候選</p><p class="result-summary">${6-r.undecidedAxes.length} 個面向已有傾向，${r.undecidedAxes.length} 個仍是 50／50。以下型態在本次計分下同分，沒有先後排名。</p><div class="candidate-grid">${candidates.slice(0,4).map(candidateCard).join('')}</div>${candidates.length>4?tx`<details class="candidate-more"><summary>查看其餘 ${candidates.length-4} 種同分候選</summary><div class="candidate-grid">${candidates.slice(4).map(candidateCard).join('')}</div></details>`:''}<ul class="result-pending" aria-label="同分原因">${pending}</ul>`;
 }
-function scenarioReflectionView(example,reflection){
- const axis=example.axis;
- const savedFit=reflection?.pole===example.pole?reflection.fit:'';
- const options=[['','尚未選擇'],['like','這像我'],['depends','要看情況'],['different','我會用別的方式']];
- const fit=example.pole?tx`<label for="scenario-fit-${axis}">這個傾向像你平常的做法嗎？</label><select id="scenario-fit-${axis}" name="fit">${options.map(([value,label])=>`<option value="${value}" ${savedFit===value?'selected':''}>${esc(tx(label))}</option>`).join('')}</select>`:'';
- return tx`<details class="scenario-reflection"><summary>留下自己的回想（選填）</summary>
-   <form id="scenario-${axis}" data-scenario-axis="${axis}" data-scenario-pole="${example.pole||''}">${fit}
-     <label for="scenario-note-${axis}">我的生活例子（選填）</label>
-     <textarea id="scenario-note-${axis}" name="note" rows="3" maxlength="${SCENARIO_NOTE_LIMIT}">${esc(reflection?.note)}</textarea>
-     <button type="submit" class="button">儲存在此瀏覽器</button>
-     <p class="scenario-save-status" role="status"></p>
-   </form></details>`;
+function previousReflectionView(reflection){
+ if(!reflection)return '';
+ const labels={like:'這像我',depends:'要看情況',different:'我會用別的方式'};
+ return tx`<details class="scenario-reflection"><summary>先前留下的回想</summary>
+   ${reflection.fit?tx`<p>${esc(tx(labels[reflection.fit]))} · ${esc(reflection.pole)}</p>`:''}
+   ${reflection.note?`<p>${esc(reflection.note)}</p>`:''}</details>`;
 }
-function dailyScenariosView(axes,reflections){
+function dailyScenariosView(axes,reflections,canSave=false){
  const scenarios=getDailyScenarios(axes,getLocale(),Object.keys(reflections));
  const cards=scenarios.map(example=>{
   const axis=AXES.find(a=>a.key===example.axis);
   const area=example.pole?esc(tx(axis.name)+' · '+preferenceName(axis,example.pole)):esc(tx(axis.name));
-  return `<article class="daily-scenario"><p class="daily-scenario-axis">${area}</p><h2>${esc(example.title)}</h2><p>${esc(example.text)}</p>${scenarioReflectionView(example,reflections[axis.key])}</article>`;
+  return `<article class="daily-scenario"><p class="daily-scenario-axis">${area}</p><h2>${esc(example.title)}</h2><p>${esc(example.text)}</p>${previousReflectionView(reflections[axis.key])}</article>`;
  }).join('');
  return tx`<details class="result-disclosure daily-scenarios" id="daily-scenarios"><summary>日常情境回想</summary>
-   <p class="result-guide">回想最近一次遇到類似情況時，你做了什麼。儲存的回想只留在此瀏覽器，測驗分數依題目回答計算。</p>
-   <div class="daily-scenario-grid">${cards}</div></details>`;
+   <p class="result-guide">回想最近一次遇到類似情況時，你做了什麼。</p>
+   <div class="daily-scenario-grid">${cards}</div>
+   ${canSave?tx('<button class="button" type="button" data-action="open-private-notes">在 Google 私人存檔保存生活例子</button>'):tx('<p class="download-note">可在詳細結果頁將生活例子保存到 Google 私人存檔。</p>')}</details>`;
 }
 export function resultInsightsView(r){
  const copy=RESULT_IMAGE_COPY[getLocale()],insights=getResultInsights(r,getLocale());
@@ -146,7 +140,7 @@ export function resultView(r,previous,draft,readOnly=false,reflections={}) {
   let comparison='';
   if(previous){const c=compareResults(previous,r);comparison=c.comparable?tx`<section class="result-section"><h2>24 題主測驗比較</h2><p>相隔 ${c.days<1?tx('不到 1 天'):tx`${c.days.toFixed(1)} 天`}。只比較同題本、兩次都完整回答主測驗四題的面向，不混入後續補題或不計分回答。${c.days<7?tx('間隔較短，不作為長期穩定性的證據。'):''}</p><div class="compare-wrap"><table class="compare-table"><thead><tr><th scope="col">軸</th><th scope="col">上次左側</th><th scope="col">這次左側</th><th scope="col">變動</th></tr></thead><tbody>${c.axes.map((a,i)=>tx`<tr><th scope="row">${tx(AXES[i].name)}</th><td>${a.comparable?a.previous+'%':'—'}</td><td>${a.comparable?a.current+'%':'—'}</td><td>${!a.comparable?tx('未比較（含不計分回答）'):(a.delta>0?'+':'')+a.delta+tx(' 百分點')}</td></tr>`).join('')}</tbody></table></div></section>`:tx`<p class="local-note">${esc(tx(c.reason))}</p>`;}
   return tx`<section class="result-page"><header class="result-head result-hero"><p class="eyebrow">這次的探索結果 · ${r.questionCount} 題</p>${intro}<p class="result-date">${date(r.completedAt)} · ${tx(stateNames[r.state])}</p><div class="actions result-main-actions"><button class="button primary" data-action="save-result-image">${esc(RESULT_IMAGE_COPY[getLocale()].save)}</button><button class="button" data-action="open-archive">私人存檔與找回</button><button class="button" data-action="export-json">下載結果</button><button class="button text" data-action="retest">再測一次</button></div><p id="result-image-status" class="download-note" role="status"></p></header>
-    ${dailyScenariosView(r.axes,reflections)}${resultInsightsView(r)}<details class="result-disclosure" id="result-detail"><summary>查看六個面向與詳細解讀</summary><p class="result-guide">百分比是本次回答的計分比例，並非類型機率或準確率。「未定」與「資料不足」分開呈現，不計分回答不加入分母。</p>
+    ${dailyScenariosView(r.axes,reflections,true)}${resultInsightsView(r)}<details class="result-disclosure" id="result-detail"><summary>查看六個面向與詳細解讀</summary><p class="result-guide">百分比是本次回答的計分比例，並非類型機率或準確率。「未定」與「資料不足」分開呈現，不計分回答不加入分母。</p>
     <div class="axes">${r.axes.map((a,i)=>axisView(a,AXES[i])).join('')}</div>
     ${detailsView(r)}</details>${continuation}
     <details class="result-disclosure"><summary>回饋這次結果</summary><section class="result-section panel"><p class="section-label">留下你的感受</p><h2>這個解讀，像你嗎？</h2><p>這份回饋對應 ${r.questionCount} 題結果；後續補題會另收回饋，先前紀錄仍保留。未填也能看結果及下載。</p>

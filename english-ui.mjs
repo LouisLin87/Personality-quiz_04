@@ -67,7 +67,6 @@ Google 測驗紀錄：正在保存，請稍候確認。	Saving your summary to G
 停止會清除未完成的這一段答案。	Stopping clears answers from this unfinished section.
 停止這一段	Stop this section
 停止這一段，保留目前結果	Stop here and keep my result
-僅在本機開始	Start with local saving only
 價值與處境	Values and people's circumstances
 儲存回饋	Save feedback
 儲存與找回 Google 紀錄	Save and recover Google records
@@ -485,17 +484,16 @@ V4 資料表結構不符，尚未寫入。	The V4 table structure doesn't match.
 回答得分	Answer points
 此面向的有效回答尚未達門檻。	This area still needs more scored answers.
 日常情境回想	Everyday reflection
-回想最近一次遇到類似情況時，你做了什麼。儲存的回想只留在此瀏覽器，測驗分數依題目回答計算。	Think about what you did the last time something similar happened. Saved reflections stay in this browser. Quiz scores come from your quiz answers.
-留下自己的回想（選填）	Add your reflection (optional)
-這個傾向像你平常的做法嗎？	Does this fit how you usually do things?
-尚未選擇	Select an option
+回想最近一次遇到類似情況時，你做了什麼。	Think about what you did the last time something similar happened.
+先前留下的回想	Your earlier reflection
+在 Google 私人存檔保存生活例子	Save an example in your private Google archive
+可在詳細結果頁將生活例子保存到 Google 私人存檔。	You can save an example in your private Google archive from the detailed results.
+測驗免登入，完成後摘要會保存到 Google。	Take the quiz without signing in. Completed summaries are saved to Google.
+完成每個階段後，測驗摘要會保存到私人 Google 試算表 365 天，供測驗改善使用。摘要包含日期、題數、六個面向的分數與當時生活狀態，不含姓名、Email、逐題答案或補充原文。	After each section, your summary is saved to a private Google spreadsheet for 365 days to help improve the quiz. It includes dates, question counts, six area scores, and your reported routine. It excludes names, email addresses, individual answers, and note text.
+續答前確認 Google 保存	Confirm Google saving before resuming
+同意保存摘要並開始	Agree to save summaries and start
+同意保存摘要並續答	Agree to save summaries and resume
 這像我	This sounds like me
 要看情況	It depends
 我會用別的方式	I would do it differently
-我的生活例子（選填）	My example (optional)
-儲存在此瀏覽器	Save in this browser
-已儲存在此瀏覽器。	Saved in this browser.
-已清除此回想。	Reflection cleared.
-請確認選項與文字長度。	Check your selection and the length of your note.
-這次未能儲存，請再試一次。	Your reflection could not be saved. Please try again.
 繼續作答	Keep answering`.split('\n').map(line=>line.split('\t')));

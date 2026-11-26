@@ -3,9 +3,9 @@ import { AXES, QUESTIONNAIRE_VERSION } from './data.mjs';
 import { ALL_QUESTIONS, presentedQuestions, validateRecord, isAnswer } from './core.mjs';
 import {validateSupplementDocument} from './supplement-core.mjs';
 export const STORAGE_KEY = 'demonward_panda_v4_wording_94_local';
-export const SCENARIO_NOTE_LIMIT=160;
+const SCENARIO_NOTE_LIMIT=160;
 const scenarioFits=['','like','depends','different'];
-export function normalizeScenarioReflection(value,axis) {
+function normalizeScenarioReflection(value,axis) {
   if(!scenarioFits.includes(value?.fit)||typeof value.note!=='string'||value.note.length>SCENARIO_NOTE_LIMIT)return null;
   if(value.fit&&value.pole!==axis.left&&value.pole!==axis.right)return null;
   return {fit:value.fit,pole:value.fit?value.pole:null,note:value.note.trim()};
